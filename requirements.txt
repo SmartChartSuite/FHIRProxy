@@ -1,0 +1,5 @@
+fastapi==0.82.0
+fhirclient==4.1.0
+fhir.resources==6.4.0
+pyjwt[crypto]
+uvicorn==0.18.3
