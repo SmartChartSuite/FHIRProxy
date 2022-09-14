@@ -8,13 +8,28 @@ import time
 import requests
 
 from fhir.resources.capabilitystatement import CapabilityStatement
+from fhir.resources.operationoutcome import OperationOutcome
 
 from util import fhir_url, private_key_file, client_id
+from models import EpicTokenResponse
 
 logger: logging.Logger = logging.getLogger('main.helpers')
 
+token_object: EpicTokenResponse | None = {}
 
-def get_token() -> dict | None:
+
+def get_token_object() -> EpicTokenResponse | OperationOutcome:
+
+    global token_object
+    if not token_object or time.time() > token_object['expires']:
+        token_object = get_token()
+        if not token_object:
+            return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue getting a token for authorization'}])
+
+    return token_object
+
+
+def get_token() -> EpicTokenResponse | None:
 
     request_jwt: str = create_jwt()
 
@@ -40,7 +55,7 @@ def get_token() -> dict | None:
         return None
 
     resp['expires'] = time.time() + resp['expires_in'] - 10
-    return resp
+    return EpicTokenResponse(**resp)
 
 
 def create_jwt() -> str:

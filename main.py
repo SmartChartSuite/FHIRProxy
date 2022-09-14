@@ -12,7 +12,8 @@ from fastapi.responses import JSONResponse
 
 from util import log_level
 from models import CustomFormatter
-from api import app_router
+from api import api_router
+from resourceHandler import resource_router
 
 logger: logging.Logger = logging.getLogger('main')
 logger.setLevel(logging.INFO)
@@ -28,6 +29,11 @@ if log_level == 'DEBUG':
     logger.addHandler(ch)
 else:
     logger.info('Logging level is at INFO')
+
+# Handle some fhir.resources warnings
+fhir_logger = logging.getLogger('fhir.resources')
+fhir_logger.setLevel(logging.ERROR)
+fhir_logger.addHandler(ch)
 
 # ========================== FastAPI variable ==========================
 app = FastAPI(title='FHIRProxy', version='0.0.1', swagger_ui_parameters={'operationsSorter': 'method'})
@@ -63,4 +69,5 @@ async def validation_exception_handler(request, exc):
 
 
 # ========================== Routers inclusion =========================
-app.include_router(app_router, tags=['Main API'])
+app.include_router(api_router, tags=['Main API'])
+app.include_router(resource_router, tags=['FHIR Resources'])
