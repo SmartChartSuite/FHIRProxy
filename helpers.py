@@ -7,24 +7,25 @@ import uuid
 import time
 import requests
 
-from fhir.resources.capabilitystatement import CapabilityStatement
-from fhir.resources.operationoutcome import OperationOutcome
+from fhir.resources.R4B.capabilitystatement import CapabilityStatement
+from fhir.resources.R4B.extension import Extension
+from fhir.resources.R4B.operationoutcome import OperationOutcome
 
 from util import fhir_url, private_key_file, client_id
 from models import EpicTokenResponse
 
 logger: logging.Logger = logging.getLogger('main.helpers')
 
-token_object: EpicTokenResponse | None = {}
+token_object: EpicTokenResponse | None = None
 
 
 def get_token_object() -> EpicTokenResponse | OperationOutcome:
 
     global token_object
-    if not token_object or time.time() > token_object['expires']:
+    if not token_object or time.time() > token_object.expires:
         token_object = get_token()
         if not token_object:
-            return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue getting a token for authorization'}])
+            return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue getting a token for authorization'}]) # type: ignore
 
     return token_object
 
@@ -43,19 +44,20 @@ def get_token() -> EpicTokenResponse | None:
     resp: requests.Response = requests.post(get_token_url(), data=request_json)
 
     try:
-        resp: dict = resp.json()
+        resp_dict: dict = resp.json()
     except JSONDecodeError:
         logger.error(f'The response from trying to request a token was not a JSON object with status code {resp.status_code}. This is the text that was returned:')
         logger.error(resp.text)
         return None
 
     logger.info(f'Got token response from server: {resp}')
-    if 'error' in resp:
+    if 'error' in resp_dict:
         logger.error('There was an error when requesting a token')
         return None
 
-    resp['expires'] = time.time() + resp['expires_in'] - 10
-    return EpicTokenResponse(**resp)
+    resp_dict['expires'] = time.time() + resp_dict['expires_in'] - 10
+    logger.info(f'Proceeding with token {resp_dict}')
+    return EpicTokenResponse(**resp_dict) # type: ignore
 
 
 def create_jwt() -> str:
@@ -81,14 +83,47 @@ def create_jwt() -> str:
 
 
 def get_token_url() -> str:
-    cap_state: dict = requests.get(fhir_url+'metadata', headers={'Accept': 'application/json'}).json()
-    cap_state: CapabilityStatement = CapabilityStatement(**cap_state)
+    resp_cap_state: dict = requests.get(fhir_url+'metadata', headers={'Accept': 'application/json'}).json()
+    cap_state: CapabilityStatement = CapabilityStatement(**resp_cap_state)
     logger.info(f'Got CapabilityStatement for URL {fhir_url}')
 
-    oauth_extension: dict = list(filter(lambda x: x.url == 'http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris', cap_state.rest[0].security.extension))[0]
+    oauth_extension: Extension = list(filter(lambda x: x.url == 'http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris', cap_state.rest[0].security.extension))[0] # type: ignore
 
-    token_url: str = list(filter(lambda x: x.url == 'token', oauth_extension.extension))[0]
-    token_url: str = token_url.valueUri
+    token_url: str = list(filter(lambda x: x.url == 'token', oauth_extension.extension))[0] # type: ignore
+    token_url: str = token_url.valueUri # type: ignore
     logger.info(f'Found token_url of {token_url}')
 
     return token_url
+
+
+def create_query_string(resource_type: str, search_params) -> str:
+    '''Helper function to create a full query string'''
+
+    query_string: str = f'{resource_type.capitalize()}?'
+    for prop, value in vars(search_params).items():
+        if not value:
+            continue
+        if query_string ==f'{resource_type.capitalize()}?':
+            query_string += f'{prop}={value}'
+        else:
+            query_string += f'&{prop}={value}'
+
+    return query_string
+
+
+def check_response(resource_type: str, resp: requests.Response) -> OperationOutcome | None:
+    '''
+    Check response from FHIR Server for non-standard status codes and OperationOutcomes
+    '''
+
+    if resp.status_code == 401:
+        logger.error(f'Something went wrong when trying to search {resource_type}. The response returned with a status code of {resp.status_code} and a body of {resp.text}')
+        return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue with authorization'}]) # type: ignore
+    elif resp.status_code != 200:
+        try:
+            if resp.json()['resourceType'] == 'OperationOutcome':
+                logger.error(resp.json())
+                return resp.json()
+        except Exception:
+            logger.error(f'Something went wrong when trying to search {resource_type}. The response returned with a status code of {resp.status_code} and a body of {resp.text}')
+            return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue with something that did not return an OperationOutcome'}]) # type: ignore
