@@ -11,7 +11,7 @@ from fhir.resources.R4B.capabilitystatement import CapabilityStatement
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.operationoutcome import OperationOutcome
 
-from util import fhir_url, private_key_file, client_id
+from util import fhir_url, private_key, client_id
 from models import EpicTokenResponse
 
 logger: logging.Logger = logging.getLogger('main.helpers')
@@ -61,9 +61,6 @@ def get_token() -> EpicTokenResponse | None:
 
 
 def create_jwt() -> str:
-
-    with open(private_key_file, 'r') as fo:
-        private_key: str = fo.read()
 
     exp_time: float = time.time() + 300
 
