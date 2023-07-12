@@ -8,6 +8,7 @@ private_key_file: str | None = os.environ.get('PRIVATE_KEY_FILE')
 public_key_file: str | None = os.environ.get('PUBLIC_KEY_FILE')
 private_key_text: str | None = os.environ.get('PRIVATE_KEY')
 public_key_text: str | None = os.environ.get('PUBLIC_KEY')
+deploy_url: str = os.environ.get('DEPLOY_URL', 'http://localhost:8080')
 
 if public_key_text and public_key_file:
     public_key = public_key_text

@@ -3,13 +3,13 @@
 import logging
 
 from fastapi import FastAPI
-
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
-from util import log_level
-from models import CustomFormatter
 from api import api_router
+from models import CustomFormatter
 from resourceHandler import resource_router
+from util import deploy_url, log_level
 
 logger: logging.Logger = logging.getLogger('main')
 logger.setLevel(logging.INFO)
@@ -32,7 +32,9 @@ fhir_logger.setLevel(logging.ERROR)
 fhir_logger.addHandler(ch)
 
 # ========================== FastAPI variable ==========================
-app = FastAPI(title='FHIRProxy', version='0.1.0', swagger_ui_parameters={'operationsSorter': 'method'})
+app_title: str = 'FHIRProxy'
+app_version: str = '0.1.0'
+app = FastAPI(title=app_title, version=app_version, swagger_ui_parameters={'operationsSorter': 'method'})
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,3 +69,17 @@ app.add_middleware(
 # ========================== Routers inclusion =========================
 app.include_router(api_router, tags=['Main API'])
 app.include_router(resource_router, tags=['FHIR Resources'])
+
+# ========== Custom OpenAPI Things for Documentation Purposes ===========
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title= app_title,
+        version= app_version,
+        routes = app.routes
+    )
+    openapi_schema["servers"] = [{"url": deploy_url}]
+    return openapi_schema
+
+app.openapi = custom_openapi
