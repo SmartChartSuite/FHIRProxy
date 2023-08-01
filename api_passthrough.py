@@ -18,6 +18,10 @@ logger: logging.Logger = logging.getLogger('main.api_passthrough')
 api_passthrough_router: APIRouter = APIRouter()
 
 
+@api_passthrough_router.get('/favicon.ico')
+def return_favicon():
+    return None
+
 @api_passthrough_router.get('/')
 def return_root() -> dict:
     '''Root function of the API'''
@@ -41,7 +45,7 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
 
     start_time = time.time()
     search_params = dict(req.query_params)
-    query_string = req.url.path.lstrip('/')+'?'+req.url.query
+    query_string = resource_type+'?'+req.url.query
     logger.info(f'Searching {resource_type} with Parameters: {search_params}')
     query_headers = {'Accept': 'application/json'}
 

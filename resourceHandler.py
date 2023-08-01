@@ -44,7 +44,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dic
 @resource_router.get('/{resource_type}', response_model_exclude_none=True)
 def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bundle | None:
     search_params = dict(req.query_params)
-    query_string = req.url.path.lstrip('/')+'?'+req.url.query
+    query_string = resource_type+'?'+req.url.query
 
     logger.info(f'Searching {resource_type} with Parameters: {search_params}')
 
