@@ -136,3 +136,6 @@ dmypy.json
 
 # Keys
 keys/
+
+# Extra Data
+epic_sandbox_data/

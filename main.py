@@ -7,9 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
 from api import api_router
+from api_passthrough import api_passthrough_router
 from models import CustomFormatter
 from resourceHandler import resource_router
-from util import deploy_url, log_level
+from util import deploy_url, log_level, passthrough_mode
 
 logger: logging.Logger = logging.getLogger('main')
 logger.setLevel(logging.INFO)
@@ -67,8 +68,12 @@ app.add_middleware(
 
 
 # ========================== Routers inclusion =========================
-app.include_router(api_router, tags=['Main API'])
-app.include_router(resource_router, tags=['FHIR Resources'])
+if not passthrough_mode:
+    app.include_router(api_router, tags=['Main API'])
+    app.include_router(resource_router, tags=['FHIR Resources'])
+else:
+    logger.info('Starting up in passthrough mode...')
+    app.include_router(api_passthrough_router, tags=['Main Passthrough API'])
 
 # ========== Custom OpenAPI Things for Documentation Purposes ===========
 def custom_openapi():

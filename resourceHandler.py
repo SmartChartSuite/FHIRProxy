@@ -12,7 +12,7 @@ from fhir.resources.R4B.patient import Patient
 from fhir.resources.R4B.bundle import Bundle
 
 from helpers import get_token_object, create_query_string, check_response
-from util import fhir_url
+from util import fhir_url, capability_statement_file
 from models import PatientSearchParams, ConditionSearchParams, ObservationSearchParams, MedicationRequestSearchParams, EpicTokenResponse
 
 logger: logging.Logger = logging.getLogger('main.resourceHandler')
@@ -57,7 +57,7 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
 
     output_search: Bundle | None = run_fhir_query(query=fhir_url+query_string,
                                                    query_headers=query_headers,
-                                                   capability_statement_file='epic_r4_metadata_edited.json',
+                                                   capability_statement_file=capability_statement_file,
                                                    debug=True)
 
     return output_search
@@ -110,7 +110,7 @@ def search_patient(search_params: PatientSearchParams = Depends(PatientSearchPar
 
     patient_search: Bundle | None = run_fhir_query(query=fhir_url+query_string,
                                                    query_headers=query_headers,
-                                                   capability_statement_file='epic_r4_metadata_edited.json',
+                                                   capability_statement_file=capability_statement_file,
                                                    debug=True)
 
     #patient_search: requests.Response = requests.get(fhir_url+query_string, headers=query_headers)

@@ -3,3 +3,5 @@ line-length = 200
 
 [tool.pytest.ini_options]
 pythonpath = ". src"
+log_cli = true
+log_cli_level = "INFO"
