@@ -11,7 +11,7 @@ from fhir.resources.R4B.capabilitystatement import CapabilityStatement
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.operationoutcome import OperationOutcome
 
-from util import fhir_url, private_key, client_id
+from util import fhir_url, private_key, client_id, fhir_auth
 from models import EpicTokenResponse
 
 logger: logging.Logger = logging.getLogger('main.helpers')
@@ -23,7 +23,16 @@ def get_token_object() -> EpicTokenResponse | OperationOutcome:
 
     global token_object
     if not token_object or time.time() > token_object.expires:
-        token_object = get_token()
+
+        # If FHIR auth not an env var
+        if not fhir_auth:
+            token_object = get_token()
+        else:
+            if len(fhir_auth.split(' ')) == 2:
+                token_object = EpicTokenResponse(access_token=fhir_auth.split(' ')[1], token_type=fhir_auth.split(' ')[0], expires_in=100000000, expires=99999999999, scope='not applicable')
+            else:
+                logger.error('Your FHIR_AUTH did not have a space in it, ensure your env var is formatted correctly. E.g. "Bearer 1233445"')
+                token_object = None
         if not token_object:
             return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue getting a token for authorization'}]) # type: ignore
 
@@ -74,7 +83,7 @@ def create_jwt() -> str:
         'exp': int(exp_time)
     }
     logger.debug(f'Using JWT Payload of: {jwt_payload}')
-    encoded: str = jwt.encode(payload=jwt_payload, key=private_key, algorithm='RS384', headers={'alg': 'RS384', 'typ': 'JWT'})
+    encoded: str = jwt.encode(payload=jwt_payload, key=private_key, algorithm='RS384', headers={'alg': 'RS384', 'typ': 'JWT'}) #type: ignore
     logger.debug(f'Created JWT of: {encoded}')
     return encoded
 
