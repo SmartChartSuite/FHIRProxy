@@ -96,7 +96,7 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
         return check_output
 
     try:
-        logger.info(f'Found {resp.json()["total"]} {resource_type} resources and returning a Bundle of {len(resp.json()["entry"]) if "entry" in resp.json() else 0} resources')
+        logger.info(f'Found {resp.json()["total"] if "total" in resp.json() else "unknown"} {resource_type} resources and returning a Bundle of {len(resp.json()["entry"]) if "entry" in resp.json() else 0} resources')
         logger.debug(f'External call took {round(resp.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
         return resp.json()
