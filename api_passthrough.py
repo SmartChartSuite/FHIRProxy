@@ -23,6 +23,12 @@ api_passthrough_router: APIRouter = APIRouter()
 def return_favicon():
     return None
 
+
+@api_passthrough_router.get('/health')
+def return_health_check() -> dict:
+    return {'status': 'FHIR Proxy is ready to receive requests'}
+
+
 @api_passthrough_router.get('/')
 def return_root() -> dict:
     '''Root function of the API'''

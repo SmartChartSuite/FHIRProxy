@@ -30,6 +30,11 @@ def return_favicon() -> None:
 
 
 @api_router.get('/health')
+def return_health_check() -> dict:
+    return {'status': 'FHIR Proxy is ready to receive requests'}
+
+
+@api_router.get('/get_resource_health')
 def return_home_data() -> OperationOutcome | dict:
     '''Testing function to get a Patient'''
     return return_patient('e63wRTbPfr1p8UW81d8Seiw3')
