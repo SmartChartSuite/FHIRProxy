@@ -23,7 +23,7 @@ class CustomFormatter(logging.Formatter):
     }
 
     def format(self, record) -> str:
-        log_fmt: str = self.FORMATS.get(record.levelno)
+        log_fmt: str | None = self.FORMATS.get(record.levelno)
         formatter: logging.Formatter = logging.Formatter(log_fmt, '%m/%d/%Y %I:%M:%S %p', style='{')
         return formatter.format(record)
 

@@ -24,6 +24,11 @@ def return_root() -> dict:
                                     'diagnostics': 'This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name.'}]).dict() # type: ignore
 
 
+@api_router.get('/favicon.ico')
+def return_favicon() -> None:
+    return None
+
+
 @api_router.get('/health')
 def return_home_data() -> OperationOutcome | dict:
     '''Testing function to get a Patient'''
