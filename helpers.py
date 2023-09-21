@@ -62,6 +62,7 @@ def get_token() -> EpicTokenResponse | None:
     logger.info(f'Got token response from server: {resp}')
     if 'error' in resp_dict:
         logger.error('There was an error when requesting a token')
+        logger.error(resp_dict)
         return None
 
     resp_dict['expires'] = time.time() + resp_dict['expires_in'] - 10
