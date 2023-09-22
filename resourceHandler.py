@@ -55,10 +55,10 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
 
     query_headers = {'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value}
 
-    output_search: Bundle | None = run_fhir_query(query=fhir_url+query_string,
-                                                   query_headers=query_headers,
-                                                   capability_statement_file=capability_statement_file,
-                                                   debug=True)
+    output_search: Bundle | OperationOutcome | None = run_fhir_query(query=fhir_url+query_string,
+                                                                     query_headers=query_headers,
+                                                                     capability_statement_file=capability_statement_file,
+                                                                     debug=True)
 
     return output_search
 
@@ -108,7 +108,7 @@ def search_patient(search_params: PatientSearchParams = Depends(PatientSearchPar
 
     query_string: str = create_query_string(resource_type='Patient', search_params=search_params)
 
-    patient_search: Bundle | None = run_fhir_query(query=fhir_url+query_string,
+    patient_search: Bundle | OperationOutcome | None = run_fhir_query(query=fhir_url+query_string,
                                                    query_headers=query_headers,
                                                    capability_statement_file=capability_statement_file,
                                                    debug=True)
