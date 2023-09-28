@@ -36,7 +36,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dic
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return check_output
+        return check_output.dict()
 
     return resource_read.json()
 
@@ -77,7 +77,7 @@ def return_patient(id: str) -> OperationOutcome | dict:
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=patient_read)
     if check_output:
-        return check_output
+        return check_output.dict()
 
     return Patient(**patient_read.json()).dict()
 
