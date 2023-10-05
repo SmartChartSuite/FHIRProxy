@@ -1,6 +1,7 @@
 '''File for API routes in the application'''
 
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 import logging
 import json
@@ -48,7 +49,7 @@ def return_jwks() -> JWKS:
 
 
 @api_passthrough_router.get('/{resource_type}/{id}', response_model=dict)
-def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dict:
+def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSONResponse | dict:
     '''Function for reading a resource given its id'''
 
     start_time = time.time()
@@ -62,12 +63,12 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dic
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return check_output
+        return JSONResponse(check_output, status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
 
     try:
         logger.debug(f'External call took {round(resource_read.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
-        return resource_read.json()
+        return JSONResponse(resource_read.json(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
     except requests.exceptions.JSONDecodeError:
         logger.error(f'Status Code: {resource_read.status_code}')
         logger.error(f'Response Text: {resource_read.text}')
@@ -76,8 +77,8 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dic
                                         'diagnostics': 'The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded'}]) # type: ignore
 
 
-@api_passthrough_router.get('/{resource_type}', response_model_exclude_none=True)
-def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bundle | None:
+@api_passthrough_router.get('/{resource_type}', response_model_exclude_none=True, response_model=dict)
+def return_resource(resource_type: str, req: Request) -> OperationOutcome | JSONResponse | Bundle:
 
     start_time = time.time()
     search_params = dict(req.query_params)
@@ -93,13 +94,13 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resp)
     if check_output:
-        return check_output
+        return JSONResponse(check_output, status_code=resp.status_code, headers=resp.headers) #type: ignore
 
     try:
         logger.info(f'Found {resp.json()["total"] if "total" in resp.json() else "unknown"} {resource_type} resources and returning a Bundle of {len(resp.json()["entry"]) if "entry" in resp.json() else 0} resources')
         logger.debug(f'External call took {round(resp.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
-        return resp.json()
+        return JSONResponse(resp.json(), status_code=resp.status_code, headers=resp.headers) #type: ignore
     except requests.exceptions.JSONDecodeError:
         logger.error(f'Status Code: {resp.status_code}')
         logger.error(f'Response Text: {resp.text}')

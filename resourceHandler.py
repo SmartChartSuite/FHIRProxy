@@ -1,6 +1,7 @@
 '''File for FHIR Resource-based API routes in the application'''
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 
 import logging
 import requests
@@ -23,7 +24,7 @@ resource_router: APIRouter = APIRouter()
 
 
 @resource_router.get('/{resource_type}/{id}', response_model=dict)
-def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dict:
+def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSONResponse | dict:
     '''Function for reading a resource given its id'''
 
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
@@ -36,9 +37,9 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | dic
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return check_output.dict()
+        return JSONResponse(check_output.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
 
-    return resource_read.json()
+    return JSONResponse(resource_read.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
 
 
 @resource_router.get('/{resource_type}', response_model_exclude_none=True)
@@ -59,8 +60,8 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
                                                                      query_headers=query_headers,
                                                                      capability_statement_file=capability_statement_file,
                                                                      debug=True)
-
-    return output_search
+    return output_search if output_search else OperationOutcome(**{'resourceType': 'OperationOutcome', 'issue': [{'severity': 'error', 'code': 'processing',
+                                                                   'diagnostics': 'The query ran into an issue, please check the logs'}]})
 
 
 @resource_router.get('/Patient/{id}', response_model=dict)
