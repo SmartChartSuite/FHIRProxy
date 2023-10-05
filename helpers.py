@@ -130,7 +130,7 @@ def check_response(resource_type: str, resp: requests.Response) -> OperationOutc
         try:
             if resp.json()['resourceType'] == 'OperationOutcome':
                 logger.error(resp.json())
-                return resp.json()
+                return OperationOutcome(**resp.json())
         except Exception:
             logger.error(f'Something went wrong when trying to search {resource_type}. The response returned with a status code of {resp.status_code} and a body of {resp.text}')
             if 'WWW-Authenticate' in resp.headers:
