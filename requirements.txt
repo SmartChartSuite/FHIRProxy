@@ -1,4 +1,5 @@
 fastapi==0.98.0
+fastapi-utils==0.2.1
 fhir.resources==7.0.0
 fhirpathpy==0.2.1
 fhirsearchhelper

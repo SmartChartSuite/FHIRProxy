@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+from fastapi_utils.tasks import repeat_every
 
 import logging
 import requests
@@ -22,10 +23,24 @@ accept_header_value: typing.Literal['application/json'] = 'application/json'
 
 resource_router: APIRouter = APIRouter()
 
+cached_resources = {}
+
+@resource_router.on_event("startup")
+@repeat_every(seconds=60*5, logger=logger)
+def clear_cached_resources():
+    logger.info('Clearing cached resources array...')
+    global cached_resources
+    del cached_resources
+    cached_resources = {} # noqa: F841
+    logger.info('Finished clearing cached resources!')
+
 
 @resource_router.get('/{resource_type}/{id}', response_model=dict)
 def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSONResponse | dict:
     '''Function for reading a resource given its id'''
+
+    if f'{resource_type}/{id}' in cached_resources:
+        return cached_resources[f'{resource_type}/{id}']
 
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
 
@@ -37,9 +52,13 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return JSONResponse(check_output.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+        return_output = JSONResponse(check_output.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+        cached_resources[f'{resource_type}/{id}'] = return_output
+        return return_output
 
-    return JSONResponse(resource_read.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+    return_output = JSONResponse(resource_read.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+    cached_resources[f'{resource_type}/{id}'] = return_output
+    return return_output
 
 
 @resource_router.get('/{resource_type}', response_model_exclude_none=True)
