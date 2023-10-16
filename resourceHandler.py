@@ -56,7 +56,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
         cached_resources[f'{resource_type}/{id}'] = return_output
         return return_output
 
-    return_output = JSONResponse(resource_read.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+    return_output = JSONResponse(resource_read.json(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
     cached_resources[f'{resource_type}/{id}'] = return_output
     return return_output
 
@@ -79,6 +79,7 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
                                                                      query_headers=query_headers,
                                                                      capability_statement_file=capability_statement_file,
                                                                      debug=True)
+
     return output_search if output_search else OperationOutcome(**{'resourceType': 'OperationOutcome', 'issue': [{'severity': 'error', 'code': 'processing',
                                                                    'diagnostics': 'The query ran into an issue, please check the logs'}]})
 
