@@ -8,6 +8,9 @@ import logging
 import requests
 import typing
 from fhirsearchhelper import run_fhir_query
+from fhirsearchhelper.helpers.medicationhelper import expand_medication_reference
+from fhirsearchhelper.helpers.documenthelper import expand_document_reference_content
+from fhirsearchhelper.helpers.conditionhelper import expand_condition_onset
 
 from fhir.resources.R4B.operationoutcome import OperationOutcome
 from fhir.resources.R4B.patient import Patient
@@ -47,8 +50,8 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
     if isinstance(token_object, OperationOutcome):
         return token_object
 
-    resource_read: requests.Response = requests.get(fhir_url+f'{resource_type}/{id}', headers={'Authorization': f'{token_object.token_type} {token_object.access_token}',
-                                                                                               'Accept': accept_header_value})
+    query_headers = {'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value}
+    resource_read: requests.Response = requests.get(fhir_url+f'{resource_type}/{id}', headers=query_headers)
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
@@ -56,7 +59,28 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
         cached_resources[f'{resource_type}/{id}'] = return_output
         return return_output
 
-    return_output = JSONResponse(resource_read.json(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+    resource_obj: dict = resource_read.json()
+
+    match resource_type:
+        case 'DocumentReference':
+            doc_ref_output = expand_document_reference_content(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            return_resource_obj = doc_ref_output
+        case 'MedicationRequest':
+            med_req_output = expand_medication_reference(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            if med_req_output:
+                return_resource_obj = med_req_output
+            else:
+                logger.warning('Unable to expand Medication reference')
+                return_resource_obj = resource_obj
+        case 'Condition':
+            condition_output = expand_condition_onset(condition=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            if condition_output:
+                return_resource_obj = condition_output
+            else:
+                logger.warning('Unable to add onsetDateTime to resource')
+                return_resource_obj = resource_obj
+
+    return_output = JSONResponse(return_resource_obj, status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
     cached_resources[f'{resource_type}/{id}'] = return_output
     return return_output
 
