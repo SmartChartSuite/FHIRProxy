@@ -79,6 +79,8 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
             else:
                 logger.warning('Unable to add onsetDateTime to resource')
                 return_resource_obj = resource_obj
+        case _:
+            return_resource_obj = resource_obj
 
     return_output = JSONResponse(return_resource_obj, status_code=resource_read.status_code) #type: ignore
     cached_resources[f'{resource_type}/{id}'] = return_output
