@@ -63,12 +63,12 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return JSONResponse(check_output, status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+        return JSONResponse(check_output, status_code=resource_read.status_code) #type: ignore
 
     try:
         logger.debug(f'External call took {round(resource_read.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
-        return JSONResponse(resource_read.json(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+        return JSONResponse(resource_read.json(), status_code=resource_read.status_code) #type: ignore
     except requests.exceptions.JSONDecodeError:
         logger.error(f'Status Code: {resource_read.status_code}')
         logger.error(f'Response Text: {resource_read.text}')
@@ -94,13 +94,13 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | JSON
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resp)
     if check_output:
-        return JSONResponse(check_output, status_code=resp.status_code, headers=resp.headers) #type: ignore
+        return JSONResponse(check_output, status_code=resp.status_code) #type: ignore
 
     try:
         logger.info(f'Found {resp.json()["total"] if "total" in resp.json() else "unknown"} {resource_type} resources and returning a Bundle of {len(resp.json()["entry"]) if "entry" in resp.json() else 0} resources')
         logger.debug(f'External call took {round(resp.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
-        return JSONResponse(resp.json(), status_code=resp.status_code, headers=resp.headers) #type: ignore
+        return JSONResponse(resp.json(), status_code=resp.status_code) #type: ignore
     except requests.exceptions.JSONDecodeError:
         logger.error(f'Status Code: {resp.status_code}')
         logger.error(f'Response Text: {resp.text}')

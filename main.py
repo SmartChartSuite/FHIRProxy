@@ -1,8 +1,9 @@
 '''Main function for FastAPI application'''
 
 import logging
+import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
@@ -45,6 +46,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    logger.info(f'Resource {request.path_params["resource_type"]} query took {process_time:.2f} seconds and has a size of {response.headers["content-length"]} bytes')
+    return response
 
 # ================= App Validation Error Override ======================
 # @app.exception_handler(RequestValidationError)

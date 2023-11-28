@@ -7,6 +7,8 @@ from fastapi_utils.tasks import repeat_every
 import logging
 import requests
 import typing
+from pydantic.error_wrappers import ValidationError
+
 from fhirsearchhelper import run_fhir_query
 from fhirsearchhelper.helpers.medicationhelper import expand_medication_reference
 from fhirsearchhelper.helpers.documenthelper import expand_document_reference_content
@@ -84,6 +86,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 
     return_output = JSONResponse(return_resource_obj, status_code=resource_read.status_code) #type: ignore
     cached_resources[f'{resource_type}/{id}'] = return_output
+
     return return_output
 
 
@@ -101,10 +104,15 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
 
     query_headers = {'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value}
 
-    output_search: Bundle | OperationOutcome | None = run_fhir_query(query=fhir_url+query_string,
-                                                                     query_headers=query_headers,
-                                                                     capability_statement_file=capability_statement_file,
-                                                                     debug=True)
+    try:
+        output_search: Bundle | OperationOutcome | None = run_fhir_query(query=fhir_url+query_string,
+                                                                         query_headers=query_headers,
+                                                                         capability_statement_file=capability_statement_file,
+                                                                         debug=True)
+    except ValidationError as err:
+        logger.error(err)
+        return OperationOutcome(**{'resourceType': 'OperationOutcome', 'issue': [{'severity': 'error', 'code': 'processing',
+                                   'diagnostics': 'There was an issue during FHIR validation of the returning object, please see logs for more details'}]})
 
     return output_search if output_search else OperationOutcome(**{'resourceType': 'OperationOutcome', 'issue': [{'severity': 'error', 'code': 'processing',
                                                                    'diagnostics': 'The query ran into an issue, please check the logs'}]})
