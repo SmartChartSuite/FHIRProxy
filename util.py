@@ -31,7 +31,6 @@ else:
 if private_key_text and private_key_file:
     print('Using PRIVATE_KEY variable')
     private_key = private_key_text
-    print(private_key)
 elif private_key_file:
     print('Using PRIVATE_KEY_FILE variable')
     with open(private_key_file, 'r') as fo:
