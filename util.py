@@ -1,4 +1,8 @@
 import os
+import logging
+
+
+logger: logging.Logger = logging.getLogger('main.util')
 
 log_level: str = os.environ.get('LOG_LEVEL', 'INFO')
 client_id: str = os.environ['CLIENT_ID']
@@ -29,14 +33,14 @@ else:
     public_key = None
 
 if private_key_text and private_key_file:
-    print('Using PRIVATE_KEY variable')
+    logger.debug('Using PRIVATE_KEY variable')
     private_key = private_key_text
 elif private_key_file:
-    print('Using PRIVATE_KEY_FILE variable')
+    logger.debug('Using PRIVATE_KEY_FILE variable')
     with open(private_key_file, 'r') as fo:
         private_key: str | None = fo.read()
 elif private_key_text:
-    print('Using PRIVATE_KEY variable')
+    logger.debug('Using PRIVATE_KEY variable')
     private_key = private_key_text
 else:
     private_key = None
