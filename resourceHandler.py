@@ -10,9 +10,9 @@ import typing
 from pydantic.error_wrappers import ValidationError
 
 from fhirsearchhelper import run_fhir_query
-from fhirsearchhelper.helpers.medicationhelper import expand_medication_reference
-from fhirsearchhelper.helpers.documenthelper import expand_document_reference_content
-from fhirsearchhelper.helpers.conditionhelper import expand_condition_onset
+from fhirsearchhelper.helpers.medicationhelper import expand_single_medication_reference
+from fhirsearchhelper.helpers.documenthelper import expand_single_document_reference_content
+from fhirsearchhelper.helpers.conditionhelper import expand_single_condition_onset
 
 from fhir.resources.R4B.operationoutcome import OperationOutcome
 from fhir.resources.R4B.patient import Patient
@@ -65,17 +65,18 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 
     match resource_type:
         case 'DocumentReference':
-            doc_ref_output = expand_document_reference_content(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            doc_ref_output = expand_single_document_reference_content(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            logger.error("check for hitting resource")
             return_resource_obj = doc_ref_output
         case 'MedicationRequest':
-            med_req_output = expand_medication_reference(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            med_req_output = expand_single_medication_reference(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
             if med_req_output:
                 return_resource_obj = med_req_output
             else:
                 logger.warning('Unable to expand Medication reference')
                 return_resource_obj = resource_obj
         case 'Condition':
-            condition_output = expand_condition_onset(condition=resource_obj, base_url=fhir_url, query_headers=query_headers)
+            condition_output = expand_single_condition_onset(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
             if condition_output:
                 return_resource_obj = condition_output
             else:

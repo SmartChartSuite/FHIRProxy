@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from httpx import Response
 import json
-from importlib.resources import open_text, files
+from importlib.resources import files
 import fhirsearchhelper.resources
 
 from main import app

@@ -63,7 +63,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return JSONResponse(check_output, status_code=resource_read.status_code) #type: ignore
+        return JSONResponse(check_output.dict(exclude_none=True), status_code=resource_read.status_code) #type: ignore
 
     try:
         logger.debug(f'External call took {round(resource_read.elapsed.total_seconds(), 4)} seconds')
