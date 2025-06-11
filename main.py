@@ -51,7 +51,10 @@ async def add_process_time_header(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
-    logger.info(f'Resource {request.path_params["resource_type"]} query took {process_time:.2f} seconds and has a size of {response.headers["content-length"]} bytes')
+    if "resource_type" in request.path_params:
+        logger.info(f'Resource {request.path_params["resource_type"]} query took {process_time:.2f} seconds and has a size of {response.headers["content-length"]} bytes')
+    else:
+        logger.info(f'Request took {process_time:.2f} seconds and has a size of {response.headers["content-length"]} bytes')
     return response
 
 # ================= App Validation Error Override ======================
