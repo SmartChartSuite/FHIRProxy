@@ -1,4 +1,4 @@
-fastapi-utils==0.8.0
+fastapi-utils[all]==0.8.0
 fastapi==0.116.1
 fhirsearchhelper
 httpx==0.28.1
