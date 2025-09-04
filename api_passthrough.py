@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 import logging
 import json
-import requests
+import httpx
 import time
 
 from fhir.resources.R4B.operationoutcome import OperationOutcome
@@ -36,7 +36,7 @@ def return_root() -> dict:
     logger.info('Retrieved root of API')
     return OperationOutcome(issue=[{'severity': 'error',
                                     'code': 'processing',
-                                    'diagnostics': 'This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name.'}]).dict() # type: ignore
+                                    'diagnostics': 'This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name.'}]).model_dump(exclude_none=True)
 
 
 @api_passthrough_router.get('/jwks', response_model=JWKS)
@@ -59,22 +59,22 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
     if fhir_auth:
         query_headers['Authorization'] = fhir_auth
 
-    resource_read = requests.get(fhir_url+f'{resource_type}/{id}', headers=query_headers)
+    resource_read = httpx.get(fhir_url+f'{resource_type}/{id}', headers=query_headers)
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return JSONResponse(check_output.dict(exclude_none=True), status_code=resource_read.status_code) #type: ignore
+        return JSONResponse(check_output.model_dump(exclude_none=True), status_code=resource_read.status_code)
 
     try:
         logger.debug(f'External call took {round(resource_read.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
-        return JSONResponse(resource_read.json(), status_code=resource_read.status_code) #type: ignore
-    except requests.exceptions.JSONDecodeError:
+        return JSONResponse(resource_read.json(), status_code=resource_read.status_code)
+    except json.JSONDecodeError:
         logger.error(f'Status Code: {resource_read.status_code}')
         logger.error(f'Response Text: {resource_read.text}')
         return OperationOutcome(issue=[{'severity': 'error',
                                         'code': 'processing',
-                                        'diagnostics': 'The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded'}]) # type: ignore
+                                        'diagnostics': 'The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded'}])
 
 
 @api_passthrough_router.get('/{resource_type}', response_model_exclude_none=True, response_model=dict)
@@ -90,20 +90,20 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | JSON
     if fhir_auth:
         query_headers['Authorization'] = fhir_auth
 
-    resp = requests.get(fhir_url+query_string, headers=query_headers)
+    resp: httpx.Response = httpx.get(fhir_url+query_string, headers=query_headers)
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resp)
     if check_output:
-        return JSONResponse(check_output, status_code=resp.status_code) #type: ignore
+        return JSONResponse(check_output, status_code=resp.status_code)
 
     try:
         logger.info(f'Found {resp.json()["total"] if "total" in resp.json() else "unknown"} {resource_type} resources and returning a Bundle of {len(resp.json()["entry"]) if "entry" in resp.json() else 0} resources')
         logger.debug(f'External call took {round(resp.elapsed.total_seconds(), 4)} seconds')
         logger.debug(f'This call took {round(time.time() - start_time, 4)} seconds')
-        return JSONResponse(resp.json(), status_code=resp.status_code) #type: ignore
-    except requests.exceptions.JSONDecodeError:
+        return JSONResponse(resp.json(), status_code=resp.status_code)
+    except json.JSONDecodeError:
         logger.error(f'Status Code: {resp.status_code}')
         logger.error(f'Response Text: {resp.text}')
         return OperationOutcome(issue=[{'severity': 'error',
                                         'code': 'processing',
-                                        'diagnostics': 'The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded'}]) # type: ignore
+                                        'diagnostics': 'The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded'}])

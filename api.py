@@ -21,7 +21,7 @@ def return_root() -> dict:
     logger.info('Retrieved root of API')
     return OperationOutcome(issue=[{'severity': 'error',
                                     'code': 'processing',
-                                    'diagnostics': 'This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name.'}]).dict() # type: ignore
+                                    'diagnostics': 'This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name.'}]).model_dump(exclude_none=True)
 
 
 @api_router.get('/favicon.ico')

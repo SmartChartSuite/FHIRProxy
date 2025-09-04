@@ -5,7 +5,7 @@ import logging
 import jwt
 import uuid
 import time
-import requests
+import httpx
 
 from fhir.resources.R4B.capabilitystatement import CapabilityStatement
 from fhir.resources.R4B.extension import Extension
@@ -34,7 +34,7 @@ def get_token_object() -> EpicTokenResponse | OperationOutcome:
                 logger.error('Your FHIR_AUTH did not have a space in it, ensure your env var is formatted correctly. E.g. "Bearer 1233445"')
                 token_object = None
         if not token_object:
-            return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue getting a token for authorization'}]) # type: ignore
+            return OperationOutcome(issue=[{'severity': 'error','code': 'processing', 'diagnostics': 'There was an issue getting a token for authorization'}])
 
     return token_object
 
@@ -50,7 +50,7 @@ def get_token() -> EpicTokenResponse | None:
     }
     logger.debug(f'Requesting token using body: {request_json}')
 
-    resp: requests.Response = requests.post(get_token_url(), data=request_json)
+    resp: httpx.Response = httpx.post(get_token_url(), data=request_json)
 
     try:
         resp_dict: dict = resp.json()
@@ -67,7 +67,7 @@ def get_token() -> EpicTokenResponse | None:
 
     resp_dict['expires'] = time.time() + resp_dict['expires_in'] - 10
     logger.info(f'Proceeding with token {resp_dict}')
-    return EpicTokenResponse(**resp_dict) # type: ignore
+    return EpicTokenResponse(**resp_dict)
 
 
 def create_jwt() -> str:
@@ -90,7 +90,7 @@ def create_jwt() -> str:
 
 
 def get_token_url() -> str:
-    resp_cap_state: dict = requests.get(fhir_url+'metadata', headers={'Accept': 'application/json'}).json()
+    resp_cap_state: dict = httpx.get(fhir_url+'metadata', headers={'Accept': 'application/json'}).json()
     cap_state: CapabilityStatement = CapabilityStatement(**resp_cap_state)
     logger.info(f'Got CapabilityStatement for URL {fhir_url}')
 
@@ -118,7 +118,7 @@ def create_query_string(resource_type: str, search_params) -> str:
     return query_string
 
 
-def check_response(resource_type: str, resp: requests.Response) -> OperationOutcome | None:
+def check_response(resource_type: str, resp: httpx.Response) -> OperationOutcome | None:
     '''
     Check response from FHIR Server for non-standard status codes and OperationOutcomes
     '''

@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from fastapi_utils.tasks import repeat_every
 
 import logging
-import requests
+import httpx
 import typing
 from pydantic.error_wrappers import ValidationError
 
@@ -53,11 +53,11 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
         return token_object
 
     query_headers = {'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value}
-    resource_read: requests.Response = requests.get(fhir_url+f'{resource_type}/{id}', headers=query_headers)
+    resource_read: httpx.Response = httpx.get(fhir_url+f'{resource_type}/{id}', headers=query_headers)
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return_output = JSONResponse(check_output.dict(), status_code=resource_read.status_code, headers=resource_read.headers) #type: ignore
+        return_output = JSONResponse(check_output.model_dump(exclude_none=True), status_code=resource_read.status_code, headers=resource_read.headers)
         cached_resources[f'{resource_type}/{id}'] = return_output
         return return_output
 
@@ -85,7 +85,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
         case _:
             return_resource_obj = resource_obj
 
-    return_output = JSONResponse(return_resource_obj, status_code=resource_read.status_code) #type: ignore
+    return_output = JSONResponse(return_resource_obj, status_code=resource_read.status_code)
     cached_resources[f'{resource_type}/{id}'] = return_output
 
     return return_output
@@ -129,13 +129,13 @@ def return_patient(id: str) -> OperationOutcome | dict:
     if isinstance(token_object, OperationOutcome):
         return token_object
 
-    patient_read: requests.Response = requests.get(fhir_url+f'{resource_type}/{id}', headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
+    patient_read: httpx.Response = httpx.get(fhir_url+f'{resource_type}/{id}', headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=patient_read)
     if check_output:
-        return check_output.dict()
+        return check_output.model_dump(exclude_none=True)
 
-    return Patient(**patient_read.json()).dict()
+    return Patient(**patient_read.json()).model_dump(exclude_none=True)
 
 
 @resource_router.get('/Patient', response_model_exclude_none=True)
@@ -169,7 +169,7 @@ def search_patient(search_params: PatientSearchParams = Depends(PatientSearchPar
                                                    capability_statement_file=capability_statement_file,
                                                    debug=True)
 
-    #patient_search: requests.Response = requests.get(fhir_url+query_string, headers=query_headers)
+    #patient_search: httpx.Response = httpx.get(fhir_url+query_string, headers=query_headers)
 
     # check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=patient_search)
     # if check_output:
@@ -199,7 +199,7 @@ def search_condition(search_params: ConditionSearchParams = Depends(ConditionSea
 
     query_string: str = create_query_string(resource_type=resource_type, search_params=search_params)
 
-    condition_search: requests.Response = requests.get(fhir_url+query_string, headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
+    condition_search: httpx.Response = httpx.get(fhir_url+query_string, headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=condition_search)
     if check_output:
@@ -227,7 +227,7 @@ def search_observation(search_params: ObservationSearchParams = Depends(Observat
 
     query_string: str = create_query_string(resource_type=resource_type, search_params=search_params)
 
-    observation_search: requests.Response = requests.get(fhir_url+query_string, headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
+    observation_search: httpx.Response = httpx.get(fhir_url+query_string, headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=observation_search)
     if check_output:
@@ -257,7 +257,7 @@ def search_medication_request(search_params: MedicationRequestSearchParams = Dep
 
     query_string: str = create_query_string(resource_type=resource_type, search_params=search_params)
 
-    mr_search: requests.Response = requests.get(fhir_url+query_string, headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
+    mr_search: httpx.Response = httpx.get(fhir_url+query_string, headers={'Authorization': f'{token_object.token_type} {token_object.access_token}', 'Accept': accept_header_value})
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=mr_search)
     if check_output:
