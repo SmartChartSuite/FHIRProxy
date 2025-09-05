@@ -139,3 +139,6 @@ keys/
 
 # Extra Data
 epic_sandbox_data/
+
+# Ruff
+.ruff_cache/
