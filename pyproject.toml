@@ -1,3 +1,28 @@
+[project]
+name = "fhirproxy"
+version = "0.1.0"
+description = "FHIRProxy for Standardizing FHIR search across various FHIR data sources"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "fastapi>=0.136.1,<1",
+    "fastapi-utils[all]>=0.8.0,<1",
+    "fhirsearchhelper",
+    "httpx>=0.28.1,<1",
+    "hypercorn>=0.18.0,<1",
+    "pyjwt[crypto]>=2.13.0,<3"
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1,<9",
+    "pytest-env>=1.2.0,<2",
+    "ruff>=0.15.13,<1",
+]
+
+[tool.uv]
+package = false
+exclude-newer = "7 days"
+
 [tool.ruff]
 line-length = 200
 
@@ -5,27 +30,3 @@ line-length = 200
 pythonpath = ". src"
 log_cli = true
 log_cli_level = "INFO"
-
-[tool.poetry]
-name = "fhirproxy"
-version = "0.1.0"
-description = ""
-authors = ["Andy Stevens <andrew.stevens@gtri.gatech.edu>"]
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-fastapi = "0.116.1"
-fastapi-utils = {version="0.8.0", extras = ["all"]}
-fhirsearchhelper = "^0.4.0"
-httpx = "0.28.1"
-hypercorn = "0.17.3"
-pyjwt = {version = "2.10.1", extras = ["crypto"]}
-
-[tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
-pytest-dotenv = "0.5.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
