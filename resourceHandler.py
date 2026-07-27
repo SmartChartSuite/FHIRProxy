@@ -92,7 +92,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 
 @resource_router.get("/{resource_type}", response_model_exclude_none=True)
 def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bundle | None:
-    search_params = dict(req.query_params)
+    search_params = req.query_params.multi_items()
     query_string = resource_type + "?" + req.url.query
 
     logger.info(f"Searching {resource_type} with Parameters: {search_params}")

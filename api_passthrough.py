@@ -78,7 +78,7 @@ def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSO
 @api_passthrough_router.get("/{resource_type}", response_model_exclude_none=True, response_model=dict)
 def return_resource(resource_type: str, req: Request) -> OperationOutcome | JSONResponse | Bundle:
     start_time = time.time()
-    search_params = dict(req.query_params)
+    search_params = req.query_params.multi_items()
     query_string = resource_type + "?" + req.url.query
 
     logger.info(f"Searching {resource_type} with Parameters: {search_params}")
