@@ -70,7 +70,7 @@ def create_jwt() -> str:
 
     jwt_payload = {"iss": client_id, "sub": client_id, "aud": token_url, "jti": str(uuid.uuid4()), "exp": int(exp_time)}
     logger.debug(f"Using JWT Payload of: {jwt_payload}")
-    encoded: str = jwt.encode(payload=jwt_payload, key=private_key, algorithm="RS384", headers={"alg": "RS384", "typ": "JWT"})  # type: ignore
+    encoded: str = jwt.encode(payload=jwt_payload, key=private_key, algorithm="RS256", headers={"alg": "RS256", "typ": "JWT"})  # type: ignore
     logger.debug(f"Created JWT of: {encoded}")
     return encoded
 
