@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import ClassVar
 
 from fastapi import Query
 from pydantic import BaseModel, Field
@@ -14,7 +14,7 @@ class CustomFormatter(logging.Formatter):
     reset: str = "\x1b[0m"
     format_str: str = "{asctime}   {levelname:8s} --- {name}: {message}"
 
-    FORMATS: dict[int, str] = {
+    FORMATS: ClassVar[dict[int, str]] = {
         logging.DEBUG: grey + format_str + reset,
         logging.INFO: green + format_str + reset,
         logging.WARNING: yellow + format_str + reset,
@@ -48,16 +48,16 @@ class JWKS(BaseModel):
 
 
 class CommonSearchParams(BaseModel):
-    _content: Optional[str] = None
-    _id: Optional[str] = None
-    _lastUpdated: Optional[str] = None
-    _profile: Optional[str] = None
-    _query: Optional[str] = None
-    _security: Optional[str] = None
-    _source: Optional[str] = None
-    _tag: Optional[str] = None
-    _text: Optional[str] = None
-    _filter: Optional[str] = None
+    _content: str | None = None
+    _id: str | None = None
+    _lastUpdated: str | None = None
+    _profile: str | None = None
+    _query: str | None = None
+    _security: str | None = None
+    _source: str | None = None
+    _tag: str | None = None
+    _text: str | None = None
+    _filter: str | None = None
 
     def not_null(self) -> str:
         not_null_params: list = []
@@ -69,114 +69,114 @@ class CommonSearchParams(BaseModel):
 
 
 class PatientSearchParams(CommonSearchParams):
-    active: Optional[str] = None
-    address: Optional[str] = None
-    address_city: Optional[str] = Field(alias="address-city")
-    address_country: Optional[str] = Field(alias="address-country")
-    address_postalcode: Optional[str] = Field(alias="address-postalcode")
-    address_state: Optional[str] = Field(alias="address-state")
-    address_use: Optional[str] = Field(alias="address-use")
-    birthdate: Optional[str] = None
-    death_date: Optional[str] = Field(alias="death-date")
-    deceased: Optional[str] = None
-    email: Optional[str] = None
-    family: Optional[str] = None
-    gender: Optional[str] = None
-    general_practitioner: Optional[str] = Field(alias="general-practitioner")
-    given: Optional[str] = None
-    identifier: Optional[str] = None
-    language: Optional[str] = None
-    link: Optional[str] = None
-    name: Optional[str] = None
-    organization: Optional[str] = None
-    phone: Optional[str] = None
-    phoentic: Optional[str] = None
-    telecom: Optional[str] = None
+    active: str | None = None
+    address: str | None = None
+    address_city: str | None = Field(alias="address-city")
+    address_country: str | None = Field(alias="address-country")
+    address_postalcode: str | None = Field(alias="address-postalcode")
+    address_state: str | None = Field(alias="address-state")
+    address_use: str | None = Field(alias="address-use")
+    birthdate: str | None = None
+    death_date: str | None = Field(alias="death-date")
+    deceased: str | None = None
+    email: str | None = None
+    family: str | None = None
+    gender: str | None = None
+    general_practitioner: str | None = Field(alias="general-practitioner")
+    given: str | None = None
+    identifier: str | None = None
+    language: str | None = None
+    link: str | None = None
+    name: str | None = None
+    organization: str | None = None
+    phone: str | None = None
+    phoentic: str | None = None
+    telecom: str | None = None
 
     class Config:
         allow_population_by_field_name: bool = True
 
 
 class ConditionSearchParams(CommonSearchParams):
-    abatement_age: Optional[str] = Query(alias="address_city")
-    abatement_date: Optional[str] = Query(alias="address_city")
-    abatement_string: Optional[str] = Query(alias="address_city")
-    asserter: Optional[str] = None
-    body_site: Optional[str] = Query(alias="address_city")
-    category: Optional[str] = None
-    clinical_status: Optional[str] = Query(alias="address_city")
-    code: Optional[str] = None
-    encounter: Optional[str] = None
-    evidence: Optional[str] = None
-    evidence_detail: Optional[str] = Query(alias="address_city")
-    identifier: Optional[str] = Query(alias="address_city")
-    onsert_age: Optional[str] = Query(alias="address_city")
-    onset_date: Optional[str] = Query(alias="address_city")
-    onset_info: Optional[str] = Query(alias="address_city")
-    patient: Optional[str] = None
-    recorded_date: Optional[str] = Query(alias="address_city")
-    severity: Optional[str] = None
-    stage: Optional[str] = None
-    subject: Optional[str] = None
-    verification_status: Optional[str] = Query(alias="address_city")
+    abatement_age: str | None = Query(alias="address_city")
+    abatement_date: str | None = Query(alias="address_city")
+    abatement_string: str | None = Query(alias="address_city")
+    asserter: str | None = None
+    body_site: str | None = Query(alias="address_city")
+    category: str | None = None
+    clinical_status: str | None = Query(alias="address_city")
+    code: str | None = None
+    encounter: str | None = None
+    evidence: str | None = None
+    evidence_detail: str | None = Query(alias="address_city")
+    identifier: str | None = Query(alias="address_city")
+    onsert_age: str | None = Query(alias="address_city")
+    onset_date: str | None = Query(alias="address_city")
+    onset_info: str | None = Query(alias="address_city")
+    patient: str | None = None
+    recorded_date: str | None = Query(alias="address_city")
+    severity: str | None = None
+    stage: str | None = None
+    subject: str | None = None
+    verification_status: str | None = Query(alias="address_city")
 
 
 class ObservationSearchParams(CommonSearchParams):
-    based_on: Optional[str] = None
-    category: Optional[str] = None
-    code: Optional[str] = None
-    code_value_concept: Optional[str] = Query(alias="address_city")
-    code_value_date: Optional[str] = Query(alias="address_city")
-    code_value_quantity: Optional[str] = Query(alias="address_city")
-    code_value_string: Optional[str] = Query(alias="address_city")
-    combo_code: Optional[str] = None
-    combo_code_value_concept: Optional[str] = Query(alias="address_city")
-    combo_code_value_quantity: Optional[str] = Query(alias="address_city")
-    combo_data_absent_reason: Optional[str] = Query(alias="address_city")
-    combo_value_concept: Optional[str] = Query(alias="address_city")
-    combo_value_quantity: Optional[str] = Query(alias="address_city")
-    component_code: Optional[str] = Query(alias="address_city")
-    component_code_value_concept: Optional[str] = Query(alias="address_city")
-    component_code_value_quantity: Optional[str] = Query(alias="address_city")
-    component_data_absent_reason: Optional[str] = Query(alias="address_city")
-    component_value_concept: Optional[str] = Query(alias="address_city")
-    component_value_quantity: Optional[str] = Query(alias="address_city")
-    data_absent_reason: Optional[str] = Query(alias="address_city")
-    date: Optional[str] = None
-    derived_from: Optional[str] = Query(alias="address_city")
-    device: Optional[str] = None
-    encounter: Optional[str] = None
-    focus: Optional[str] = None
-    has_member: Optional[str] = Query(alias="address_city")
-    identifier: Optional[str] = None
-    method: Optional[str] = None
-    part_of: Optional[str] = Query(alias="address_city")
-    patient: Optional[str] = None
-    performer: Optional[str] = None
-    specimen: Optional[str] = None
-    status: Optional[str] = None
-    subject: Optional[str] = None
-    value_concept: Optional[str] = Query(alias="address_city")
-    value_date: Optional[str] = Query(alias="address_city")
-    value_quantity: Optional[str] = Query(alias="address_city")
-    value_string: Optional[str] = Query(alias="address_city")
+    based_on: str | None = None
+    category: str | None = None
+    code: str | None = None
+    code_value_concept: str | None = Query(alias="address_city")
+    code_value_date: str | None = Query(alias="address_city")
+    code_value_quantity: str | None = Query(alias="address_city")
+    code_value_string: str | None = Query(alias="address_city")
+    combo_code: str | None = None
+    combo_code_value_concept: str | None = Query(alias="address_city")
+    combo_code_value_quantity: str | None = Query(alias="address_city")
+    combo_data_absent_reason: str | None = Query(alias="address_city")
+    combo_value_concept: str | None = Query(alias="address_city")
+    combo_value_quantity: str | None = Query(alias="address_city")
+    component_code: str | None = Query(alias="address_city")
+    component_code_value_concept: str | None = Query(alias="address_city")
+    component_code_value_quantity: str | None = Query(alias="address_city")
+    component_data_absent_reason: str | None = Query(alias="address_city")
+    component_value_concept: str | None = Query(alias="address_city")
+    component_value_quantity: str | None = Query(alias="address_city")
+    data_absent_reason: str | None = Query(alias="address_city")
+    date: str | None = None
+    derived_from: str | None = Query(alias="address_city")
+    device: str | None = None
+    encounter: str | None = None
+    focus: str | None = None
+    has_member: str | None = Query(alias="address_city")
+    identifier: str | None = None
+    method: str | None = None
+    part_of: str | None = Query(alias="address_city")
+    patient: str | None = None
+    performer: str | None = None
+    specimen: str | None = None
+    status: str | None = None
+    subject: str | None = None
+    value_concept: str | None = Query(alias="address_city")
+    value_date: str | None = Query(alias="address_city")
+    value_quantity: str | None = Query(alias="address_city")
+    value_string: str | None = Query(alias="address_city")
 
 
 class MedicationRequestSearchParams(CommonSearchParams):
-    authoredon: Optional[str] = None
-    category: Optional[str] = None
-    code: Optional[str] = None
-    date: Optional[str] = None
-    encounter: Optional[str] = None
-    identifier: Optional[str] = None
-    intended_dispenser: Optional[str] = None
-    intended_performer: Optional[str] = None
-    intender_performertype: Optional[str] = None
-    intent: Optional[str] = None
-    medication: Optional[str] = None
-    patient: Optional[str] = None
-    priority: Optional[str] = None
-    requester: Optional[str] = None
-    reported_boolean: Optional[str] = None
-    status: Optional[str] = None
-    subject: Optional[str] = None
+    authoredon: str | None = None
+    category: str | None = None
+    code: str | None = None
+    date: str | None = None
+    encounter: str | None = None
+    identifier: str | None = None
+    intended_dispenser: str | None = None
+    intended_performer: str | None = None
+    intender_performertype: str | None = None
+    intent: str | None = None
+    medication: str | None = None
+    patient: str | None = None
+    priority: str | None = None
+    requester: str | None = None
+    reported_boolean: str | None = None
+    status: str | None = None
+    subject: str | None = None

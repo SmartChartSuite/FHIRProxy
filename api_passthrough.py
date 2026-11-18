@@ -94,12 +94,13 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | JSON
         return JSONResponse(check_output, status_code=resp.status_code)
 
     try:
+        response_json: dict = resp.json()
         logger.info(
-            f"Found {resp.json()['total'] if 'total' in resp.json() else 'unknown'} {resource_type} resources and returning a Bundle of {len(resp.json()['entry']) if 'entry' in resp.json() else 0} resources"
+            f"Found {response_json.get('total', 'unknown')} {resource_type} resources and returning a Bundle of {len(response_json.get('entry', []))} resources"
         )
         logger.debug(f"External call took {round(resp.elapsed.total_seconds(), 4)} seconds")
         logger.debug(f"This call took {round(time.time() - start_time, 4)} seconds")
-        return JSONResponse(resp.json(), status_code=resp.status_code)
+        return JSONResponse(response_json, status_code=resp.status_code)
     except json.JSONDecodeError:
         logger.error(f"Status Code: {resp.status_code}")
         logger.error(f"Response Text: {resp.text}")

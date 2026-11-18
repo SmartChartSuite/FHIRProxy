@@ -107,10 +107,10 @@ def test_condition_search() -> None:
 
     for entry in entries_all + entries_filtered:
         assert query_dict["patient"] == entry["resource"]["subject"]["reference"].split("/")[1]
-        assert any([clin_stat == entry["resource"]["clinicalStatus"]["coding"][0]["code"] for clin_stat in query_dict["clinical-status"].split(",")])
+        assert any(clin_stat == entry["resource"]["clinicalStatus"]["coding"][0]["code"] for clin_stat in query_dict["clinical-status"].split(","))
         assert query_dict["category"] in [cat["coding"][0]["code"] for cat in entry["resource"]["category"]]
 
-    assert any([query_dict["code"].split("|")[1] == coding["code"] for entry in entries_filtered for coding in entry["resource"]["code"]["coding"]])
+    assert any(query_dict["code"].split("|")[1] == coding["code"] for entry in entries_filtered for coding in entry["resource"]["code"]["coding"])
 
 
 def test_observation_search():
@@ -141,8 +141,8 @@ def test_observation_search():
         assert query_dict["patient"] == entry["resource"]["subject"]["reference"].split("/")[1]
         assert query_dict["category"] in [cat["coding"][0]["code"] for cat in entry["resource"]["category"]]
 
-    assert all([entry["resource"]["code"]["coding"][0]["system"] == query_dict["code"].split("|")[0] for entry in filtered_entries])
-    assert all([entry["resource"]["code"]["coding"][0]["code"] == query_dict["code"].split("|")[1] for entry in filtered_entries])
+    assert all(entry["resource"]["code"]["coding"][0]["system"] == query_dict["code"].split("|")[0] for entry in filtered_entries)
+    assert all(entry["resource"]["code"]["coding"][0]["code"] == query_dict["code"].split("|")[1] for entry in filtered_entries)
 
 
 def test_medication_request_search() -> None:
@@ -168,8 +168,8 @@ def test_medication_request_search() -> None:
 
     assert len(filtered_entries) < len(all_entries)
 
-    assert all([query_dict["patient"] == entry["resource"]["subject"]["reference"].split("/")[1] for entry in all_entries + filtered_entries])
-    assert any([query_dict["code"].split("|")[1] == coding["code"] for entry in filtered_entries for coding in entry["resource"]["medicationCodeableConcept"]["coding"]])
+    assert all(query_dict["patient"] == entry["resource"]["subject"]["reference"].split("/")[1] for entry in all_entries + filtered_entries)
+    assert any(query_dict["code"].split("|")[1] == coding["code"] for entry in filtered_entries for coding in entry["resource"]["medicationCodeableConcept"]["coding"])
 
 
 def test_document_reference_search() -> None:
@@ -188,5 +188,5 @@ def test_document_reference_search() -> None:
     entries = resp.json()["entry"]
     print(entries)
 
-    assert all([entry["resource"]["subject"]["reference"] == f"Patient/{query_dict['subject']}" for entry in entries])
-    assert all(["data" in content["attachment"] for entry in entries for content in entry["resource"]["content"]])
+    assert all(entry["resource"]["subject"]["reference"] == f"Patient/{query_dict['subject']}" for entry in entries)
+    assert all("data" in content["attachment"] for entry in entries for content in entry["resource"]["content"])

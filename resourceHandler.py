@@ -109,16 +109,14 @@ def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bund
     except ValidationError as err:
         logger.error(err)
         return OperationOutcome(
-            **{
-                "resourceType": "OperationOutcome",
-                "issue": [{"severity": "error", "code": "processing", "diagnostics": "There was an issue during FHIR validation of the returning object, please see logs for more details"}],
-            }
+            resourceType="OperationOutcome",
+            issue=[{"severity": "error", "code": "processing", "diagnostics": "There was an issue during FHIR validation of the returning object, please see logs for more details"}],
         )
 
     return (
         output_search
         if output_search
-        else OperationOutcome(**{"resourceType": "OperationOutcome", "issue": [{"severity": "error", "code": "processing", "diagnostics": "The query ran into an issue, please check the logs"}]})
+        else OperationOutcome(resourceType="OperationOutcome", issue=[{"severity": "error", "code": "processing", "diagnostics": "The query ran into an issue, please check the logs"}])
     )
 
 

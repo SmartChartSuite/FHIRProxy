@@ -10,6 +10,7 @@ import jwt
 from fhir.resources.R4B.capabilitystatement import CapabilityStatement
 from fhir.resources.R4B.extension import Extension
 from fhir.resources.R4B.operationoutcome import OperationOutcome
+from pydantic import ValidationError
 
 from models import EpicTokenResponse
 from util import client_id, fhir_auth, fhir_url, private_key
@@ -80,10 +81,10 @@ def get_token_url() -> str:
     cap_state: CapabilityStatement = CapabilityStatement(**resp_cap_state)
     logger.info(f"Got CapabilityStatement for URL {fhir_url}")
 
-    oauth_extension: Extension = list(filter(lambda x: x.url == "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", cap_state.rest[0].security.extension))[0]  # type: ignore
+    oauth_extension: Extension = next(filter(lambda x: x.url == "http://fhir-registry.smarthealthit.org/StructureDefinition/oauth-uris", cap_state.rest[0].security.extension))  # type: ignore
 
-    token_url: str = list(filter(lambda x: x.url == "token", oauth_extension.extension))[0]  # type: ignore
-    token_url: str = token_url.valueUri  # type: ignore
+    token_extension = next(filter(lambda x: x.url == "token", oauth_extension.extension))  # type: ignore
+    token_url: str = token_extension.valueUri  # type: ignore
     logger.info(f"Found token_url of {token_url}")
 
     return token_url
@@ -117,7 +118,7 @@ def check_response(resource_type: str, resp: httpx.Response) -> OperationOutcome
             if resp.json()["resourceType"] == "OperationOutcome":
                 logger.error(resp.json())
                 return OperationOutcome(**resp.json())
-        except Exception:
+        except (JSONDecodeError, KeyError, TypeError, ValidationError):
             logger.error(f"Something went wrong when trying to search {resource_type}. The response returned with a status code of {resp.status_code} and a body of {resp.text}")
             if "WWW-Authenticate" in resp.headers:
                 logger.error(resp.headers["WWW-Authenticate"])
