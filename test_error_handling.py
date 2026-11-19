@@ -106,6 +106,26 @@ def test_binary_read_requests_fhir_json_and_returns_resource(monkeypatch) -> Non
     assert observed_headers["Accept"] == "application/fhir+json"
 
 
+def test_document_reference_search_preserves_repeated_date_params(monkeypatch) -> None:
+    monkeypatch.setattr(resourceHandler, "get_token_object", _test_token)
+    captured: dict[str, str] = {}
+
+    def fake_run_fhir_query(**kwargs):
+        captured["query"] = kwargs["query"]
+
+    monkeypatch.setattr(resourceHandler, "run_fhir_query", fake_run_fhir_query)
+    incoming_request = _request(
+        "GET",
+        "/DocumentReference?patient=123&date=ge%3C2024-01-01&date=le%3C2024-12-31",
+        {"Accept": "application/fhir+json"},
+        b"",
+    )
+
+    resourceHandler.return_resource("DocumentReference", incoming_request)
+
+    assert captured["query"].endswith("DocumentReference?patient=123&date=ge%3C2024-01-01&date=le%3C2024-12-31")
+
+
 def test_raw_endpoint_forwards_request_and_response(monkeypatch) -> None:
     monkeypatch.setattr(resourceHandler, "get_token_object", _test_token)
     observed: dict[str, object] = {}
