@@ -1,20 +1,18 @@
 """File for API routes in the application"""
 
 import json
-import logging
 import time
 
-import httpx
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fhir.resources.R4B.bundle import Bundle
 from fhir.resources.R4B.operationoutcome import OperationOutcome
+from pydantic import ValidationError
 
-from helpers import check_response
+from helpers import check_response, forward_raw_request, json_response_without_none, operation_outcome, operation_outcome_response, parse_json_response, request_response
+from logging_config import logger
 from models import JWKS
 from util import fhir_auth, fhir_url
-
-logger: logging.Logger = logging.getLogger("main.api_passthrough")
 
 api_passthrough_router: APIRouter = APIRouter()
 
@@ -33,77 +31,95 @@ def return_health_check() -> dict:
 def return_root() -> dict:
     """Root function of the API"""
     logger.info("Retrieved root of API")
-    return OperationOutcome(
-        issue=[{"severity": "error", "code": "processing", "diagnostics": "This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name."}]
+    return operation_outcome(
+        "This is the base URL of server. Unable to handle this request, as it does not contain a resource type or operation name."
     ).model_dump(exclude_none=True)
 
 
 @api_passthrough_router.get("/jwks", response_model=JWKS)
-def return_jwks() -> JWKS:
-    with open("jwks.json", "r") as fo:
-        jwks_obj: dict = json.load(fo)
+def return_jwks() -> JWKS | JSONResponse:
+    try:
+        with open("jwks.json", "r") as fo:
+            jwks_obj: dict = json.load(fo)
+        return JWKS(**jwks_obj)
+    except (OSError, json.JSONDecodeError, ValidationError) as exc:
+        logger.bind(operation="loading JWKS").opt(exception=exc).error("Unable to load JWKS configuration")
+        return operation_outcome_response("The server key configuration is unavailable.", status_code=500)
 
-    return JWKS(**jwks_obj)
+
+@api_passthrough_router.api_route(
+    "/raw/{raw_path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    response_model=None,
+)
+async def return_raw_request(raw_path: str, request: Request) -> Response:
+    return await forward_raw_request(request, raw_path)
 
 
-@api_passthrough_router.get("/{resource_type}/{id}", response_model=dict)
+@api_passthrough_router.get("/{resource_type}/{id}", response_model_exclude_none=True, response_model=dict)
 def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSONResponse | dict:
     """Function for reading a resource given its id"""
 
-    start_time = time.time()
-    logger.info(f"Reading {resource_type} Resource with ID: {id}")
-    query_headers = {"Accept": "application/json"}
-
+    start_time = time.perf_counter()
+    logger.info("Reading {} resource", resource_type)
+    query_headers = {"Accept": "application/fhir+json"}
     if fhir_auth:
         query_headers["Authorization"] = fhir_auth
 
-    resource_read = httpx.get(fhir_url + f"{resource_type}/{id}", headers=query_headers)
+    resource_read = request_response(
+        url=fhir_url + f"{resource_type}/{id}",
+        method="GET",
+        resource_type=resource_type,
+        operation="reading passthrough resource",
+        headers=query_headers,
+    )
+    if resource_read is None:
+        return operation_outcome_response("Unable to reach the FHIR server while reading the resource.")
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
         return JSONResponse(check_output.model_dump(exclude_none=True), status_code=resource_read.status_code)
 
-    try:
-        logger.debug(f"External call took {round(resource_read.elapsed.total_seconds(), 4)} seconds")
-        logger.debug(f"This call took {round(time.time() - start_time, 4)} seconds")
-        return JSONResponse(resource_read.json(), status_code=resource_read.status_code)
-    except json.JSONDecodeError:
-        logger.error(f"Status Code: {resource_read.status_code}")
-        logger.error(f"Response Text: {resource_read.text}")
-        return OperationOutcome(
-            issue=[{"severity": "error", "code": "processing", "diagnostics": "The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded"}]
-        )
+    response_data = parse_json_response(resource_read, resource_type=resource_type, operation="reading passthrough resource")
+    if response_data is None:
+        return operation_outcome_response("The FHIR server returned an invalid JSON resource.")
 
+    logger.debug("Passthrough resource request took {:.4f} seconds", time.perf_counter() - start_time)
+    return json_response_without_none(response_data, status_code=resource_read.status_code)
 
 @api_passthrough_router.get("/{resource_type}", response_model_exclude_none=True, response_model=dict)
 def return_resource(resource_type: str, req: Request) -> OperationOutcome | JSONResponse | Bundle:
-    start_time = time.time()
-    search_params = req.query_params.multi_items()
+    start_time = time.perf_counter()
     query_string = resource_type + "?" + req.url.query
-
-    logger.info(f"Searching {resource_type} with Parameters: {search_params}")
-    query_headers = {"Accept": "application/json"}
+    logger.info("Searching {} resource", resource_type)
+    query_headers = {"Accept": "application/fhir+json"}
 
     if fhir_auth:
         query_headers["Authorization"] = fhir_auth
 
-    resp: httpx.Response = httpx.get(fhir_url + query_string, headers=query_headers)
+    response = request_response(
+        url=fhir_url + query_string,
+        method="GET",
+        resource_type=resource_type,
+        operation="searching passthrough resource",
+        headers=query_headers,
+    )
+    if response is None:
+        return operation_outcome_response("Unable to reach the FHIR server while searching.")
 
-    check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resp)
+    check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=response)
     if check_output:
-        return JSONResponse(check_output, status_code=resp.status_code)
+        return JSONResponse(check_output.model_dump(exclude_none=True), status_code=response.status_code)
 
-    try:
-        response_json: dict = resp.json()
-        logger.info(
-            f"Found {response_json.get('total', 'unknown')} {resource_type} resources and returning a Bundle of {len(response_json.get('entry', []))} resources"
-        )
-        logger.debug(f"External call took {round(resp.elapsed.total_seconds(), 4)} seconds")
-        logger.debug(f"This call took {round(time.time() - start_time, 4)} seconds")
-        return JSONResponse(response_json, status_code=resp.status_code)
-    except json.JSONDecodeError:
-        logger.error(f"Status Code: {resp.status_code}")
-        logger.error(f"Response Text: {resp.text}")
-        return OperationOutcome(
-            issue=[{"severity": "error", "code": "processing", "diagnostics": "The response returned from the FHIR_URL was not JSON parseable, please see logs for what the server responded"}]
-        )
+    response_data = parse_json_response(response, resource_type=resource_type, operation="searching passthrough resource")
+    if response_data is None:
+        return operation_outcome_response("The FHIR server returned an invalid search response.")
+
+    entries = response_data.get("entry", [])
+    if not isinstance(entries, list):
+        logger.bind(resource_type=resource_type, operation="searching passthrough resource").error("FHIR search response contained an invalid entry collection")
+        return operation_outcome_response("The FHIR server returned an invalid search response.")
+
+    logger.info("Found {} {} resources and returning a Bundle of {} resources", response_data.get("total", "unknown"), resource_type, len(entries))
+    logger.debug("Passthrough search request took {:.4f} seconds", time.perf_counter() - start_time)
+    return json_response_without_none(response_data, status_code=response.status_code)

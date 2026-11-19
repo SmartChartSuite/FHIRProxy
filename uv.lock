@@ -6,6 +6,9 @@ requires-python = "==3.14.*"
 exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P7D"
 
+[options.exclude-newer-package]
+fhirsearchhelper = "2026-11-18T22:30:14Z"
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.6"
@@ -215,27 +218,27 @@ wheels = [
 
 [[package]]
 name = "fhir-resources"
-version = "8.1.0"
+version = "8.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fhir-core" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/7f/882dde9ce229fccfa81257c6989edb4b0d67f7e8ae94170e74be024fdfa9/fhir_resources-8.1.0.tar.gz", hash = "sha256:8d64a717f37ea50bde97c1b8ff3fd969a6074df99c167183a273abe4da8bbfa5", size = 1599741, upload-time = "2025-07-10T12:36:01.137Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/06/331d78ad6db6903be6b912701c44b32af295279907b3a2e6ad6c2e2f97b1/fhir_resources-8.3.0.tar.gz", hash = "sha256:bdfd1c7bd1b89bfa269c1f435727771f6c632cd857e2848221713b3f8b9f46e8", size = 1617996, upload-time = "2026-07-03T15:23:54.01Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/a9/18672a8a1c570cb7b4eeafe1decd267f291997d20f240fffb17145a525f9/fhir_resources-8.1.0-py2.py3-none-any.whl", hash = "sha256:4370a5b6b35f278705328368bf79b3a17db91025fd4ec896fb963edd44ecc5de", size = 2267435, upload-time = "2025-07-10T12:35:59.096Z" },
+    { url = "https://files.pythonhosted.org/packages/d1/86/32914542064b8aee77ac48142f8a1955df78da4eb905dd41697d26941d21/fhir_resources-8.3.0-py2.py3-none-any.whl", hash = "sha256:151e6c9b4336e36383cc2aaf2067a6f112a420fce1c7bd289182e55dd950871b", size = 2288069, upload-time = "2026-07-03T15:23:51.97Z" },
 ]
 
 [[package]]
 name = "fhirpathpy"
-version = "2.1.0"
+version = "2.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "antlr4-python3-runtime" },
     { name = "python-dateutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fa/c7/af93d0cb6eda4e845e2842451ad53194b52eb01ceefc8b8b7e1e0f8faf11/fhirpathpy-2.1.0.tar.gz", hash = "sha256:ce3a8a7f3012f07826cd2c6dcbbe005c3172e00cf24989ba6eea09f4b2a2a5b8", size = 217304, upload-time = "2025-08-01T17:06:22.505Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/8a/d606a7bf9a8ef16898d28a252b99c214d5bcec68a34d5b68ab6f222f3bf5/fhirpathpy-2.2.4.tar.gz", hash = "sha256:ff592994edb7a30fd499e1462f3f7ec6d83568df58487e9d522ead2f7a85ffdb", size = 218241, upload-time = "2026-08-25T18:29:18.487Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/de/91/ab3f88a3cc19fee6a4c6e90cc86df6c7ac154c99b446a27a17e8ebc295e0/fhirpathpy-2.1.0-py3-none-any.whl", hash = "sha256:736deadc8adf75257db2d36db0451a5d07e12a56699f8e974a30423730b1786a", size = 231564, upload-time = "2025-08-01T17:06:21.146Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/9a/d0ff5aae5cf5b688f300b5b21c604bfbfd23feee4451de5f980a0773a5c5/fhirpathpy-2.2.4-py3-none-any.whl", hash = "sha256:5ea363963598a9c8c23425b6594986dc8c8e33600656b70639e088f0c62c355d", size = 232572, upload-time = "2026-08-25T18:29:17.299Z" },
 ]
 
 [[package]]
@@ -248,6 +251,7 @@ dependencies = [
     { name = "fhirsearchhelper" },
     { name = "httpx" },
     { name = "hypercorn" },
+    { name = "loguru" },
     { name = "pyjwt", extra = ["crypto"] },
 ]
 
@@ -262,9 +266,10 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.162.4,<1" },
     { name = "fastapi-utils", extras = ["all"], specifier = ">=0.8.0,<1" },
-    { name = "fhirsearchhelper", specifier = ">=0.4.1" },
+    { name = "fhirsearchhelper", specifier = ">=0.6.0" },
     { name = "httpx", specifier = ">=0.28.1,<1" },
     { name = "hypercorn", specifier = ">=0.18.0,<1" },
+    { name = "loguru", specifier = ">=0.7.3,<1" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.15.1,<3" },
 ]
 
@@ -277,7 +282,7 @@ dev = [
 
 [[package]]
 name = "fhirsearchhelper"
-version = "0.4.1"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fhir-resources" },
@@ -285,9 +290,9 @@ dependencies = [
     { name = "html2text" },
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/60/454ca6e593b3698f813b923cb625bb083a22e21d4c6f13aa138dd7a37f1b/fhirsearchhelper-0.4.1.tar.gz", hash = "sha256:63425ed44d06bb399e56086679460681ebed071d9322e06fc18c71cfa3ba394f", size = 55624, upload-time = "2025-09-04T16:24:09.146Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/3d/1f2da4173e8efb8e18dbb4131f7132035e3aa7bf9d395bb2cb0c227bce88/fhirsearchhelper-0.6.0.tar.gz", hash = "sha256:a8221b94a09a9dbc8f59db450dc8e47bffbad5339133bc55869b46e841934edc", size = 55143, upload-time = "2026-11-18T22:30:13.432Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/93/2bc8026e8027ddf6427cb2d50ef642cce163333a295a0f621f239f399c24/fhirsearchhelper-0.4.1-py3-none-any.whl", hash = "sha256:4d318432f3a1fb84d958df90c7ffa9893ef4f9bd33e57166cc38b5d4f94445ba", size = 59245, upload-time = "2025-09-04T16:24:07.505Z" },
+    { url = "https://files.pythonhosted.org/packages/72/cd/b731f8c357339aa718750caf0425d0ead209ac73e5de9f98137f8f8e8831/fhirsearchhelper-0.6.0-py3-none-any.whl", hash = "sha256:77e0886db1243b1d9c0284b1735b83c68a341f9f3c5916db906eef24eb3b22a7", size = 58848, upload-time = "2026-11-18T22:30:11.973Z" },
 ]
 
 [[package]]
@@ -398,6 +403,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/e1/2069291243c926a2ff1cd706c7f3eeb9b62144bf60f77c9fb9ff2fb26bd3/iniconfig-2.3.1.tar.gz", hash = "sha256:67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae878960", size = 21209, upload-time = "2026-10-06T22:48:38.076Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl", hash = "sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7", size = 7552, upload-time = "2026-10-06T22:48:36.959Z" },
+]
+
+[[package]]
+name = "loguru"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "win32-setctime", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/61/ce/b5bb93d4d9fc7a067f69140b3bb3782f6ad6360bc76e99b6e3d386cb1320/loguru-0.8.0.tar.gz", hash = "sha256:fb3e4623288e37700a0577f6e0ce776cc1860b5d95c657d67f07a2476b304867", size = 71232, upload-time = "2026-11-11T18:50:26.248Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/00/9ee7c8da7342b1a5524bca9d036f89e7d1d1e5a6345c9623763eeeac941f/loguru-0.8.0-py3-none-any.whl", hash = "sha256:e0fba09d6f76ba2d2f4bd1757122942f5a670c702e988b5efaeab99dacba0069", size = 69409, upload-time = "2026-11-11T18:50:24.148Z" },
 ]
 
 [[package]]
@@ -725,6 +743,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ff/50/0195198eb1d75bab716bb0a813abea4cc394bfa17a92a189f021a34859af/typing_inspection-0.4.5.tar.gz", hash = "sha256:7f16c411e7930dc79596d42ab44672a3fe5f60eb34b781a1647e7872363120c7", size = 81194, upload-time = "2026-11-04T14:13:23.774Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/de/0c/ea2544850a7c135e15033a5c7a8e7211136184b7ae63e2239d557c2b3019/typing_inspection-0.4.5-py3-none-any.whl", hash = "sha256:bc210535442b39e1bf2805e0c7a17dfd6a4ace760c84c7f7d16245d23a6b1c39", size = 14874, upload-time = "2026-11-04T14:13:22.616Z" },
+]
+
+[[package]]
+name = "win32-setctime"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/e4/f0f252c65f9bf7c4042b1f707ef338d49f799da582234e1d3e6e2cfca291/win32_setctime-1.2.1.tar.gz", hash = "sha256:077b35471bf1ff1d71e165c919ddc0cecf51b8e1802f5d820d33a96e2f6717dd", size = 4983, upload-time = "2026-10-25T18:21:32.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bd/df/5593480bc1e932eeae28e4fa182ab68174edd0d77409ced3b6491d02d1d5/win32_setctime-1.2.1-py3-none-any.whl", hash = "sha256:a9edc685b35414bec69392c866ed82456ad125ac4a6a4b703ec1d8b462d4f477", size = 4215, upload-time = "2026-10-25T18:21:30.939Z" },
 ]
 
 [[package]]

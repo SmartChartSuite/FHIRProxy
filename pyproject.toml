@@ -6,9 +6,10 @@ requires-python = ">=3.14,<3.15"
 dependencies = [
     "fastapi>=0.162.4,<1",
     "fastapi-utils[all]>=0.8.0,<1",
-    "fhirsearchhelper>=0.4.1",
+    "fhirsearchhelper>=0.6.0",
     "httpx>=0.28.1,<1",
     "hypercorn>=0.18.0,<1",
+    "loguru>=0.7.3,<1",
     "pyjwt[crypto]>=2.15.1,<3"
 ]
 
@@ -22,6 +23,7 @@ dev = [
 [tool.uv]
 package = false
 exclude-newer = "7 days"
+exclude-newer-package = { fhirsearchhelper = "2026-11-18T22:30:14Z" }
 
 [tool.ruff]
 line-length = 200

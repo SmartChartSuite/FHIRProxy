@@ -1,41 +1,18 @@
 """Main function for FastAPI application"""
 
-import logging
 import time
 
-import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
 from api import api_router
 from api_passthrough import api_passthrough_router
-from models import CustomFormatter
+from logging_config import logger
 from resourceHandler import resource_router
 from util import deploy_url, log_level, passthrough_mode
 
-logger: logging.Logger = logging.getLogger("main")
-logger.setLevel(logging.INFO)
-ch: logging.StreamHandler = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-ch.setFormatter(CustomFormatter())
-logger.addHandler(ch)
-
-if log_level == "DEBUG":
-    logger.info("Logging level is being set to DEBUG")
-    logger.setLevel(logging.DEBUG)
-    ch.setLevel(logging.DEBUG)
-    logger.addHandler(ch)
-else:
-    logger.info("Logging level is at INFO")
-
-# Handle some fhir.resources warnings
-fhir_logger = logging.getLogger("fhir.resources")
-fhir_logger.setLevel(logging.ERROR)
-fhir_logger.addHandler(ch)
-
-# Making a global timeout for httpx
-httpx._config.DEFAULT_TIMEOUT_CONFIG = httpx.Timeout(timeout=300)
+logger.info("Logging configured at {}", log_level.upper())
 
 # ========================== FastAPI variable ==========================
 app_title: str = "FHIRProxy"
@@ -53,13 +30,22 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    if "resource_type" in request.path_params:
-        logger.info(f"Resource {request.path_params['resource_type']} query took {process_time:.2f} seconds and has a size of {response.headers['content-length']} bytes")
+    start_time = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        route = request.scope.get("route")
+        route_path = getattr(route, "path", "unknown")
+        logger.bind(method=request.method, route=route_path).exception("Unhandled request error")
+        raise
+
+    process_time = time.perf_counter() - start_time
+    resource_type = request.path_params.get("resource_type")
+    content_length = response.headers.get("content-length", "unknown")
+    if resource_type:
+        logger.info("Resource {} query took {:.2f} seconds and returned {} bytes", resource_type, process_time, content_length)
     else:
-        logger.info(f"Request took {process_time:.2f} seconds and has a size of {response.headers['content-length']} bytes")
+        logger.info("Request took {:.2f} seconds and returned {} bytes", process_time, content_length)
     return response
 
 

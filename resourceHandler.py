@@ -1,11 +1,10 @@
 """File for FHIR Resource-based API routes in the application"""
 
-import logging
 import typing
 
 import httpx
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi_utils.tasks import repeat_every
 from fhir.resources.R4B.bundle import Bundle
 from fhir.resources.R4B.operationoutcome import OperationOutcome
@@ -16,21 +15,23 @@ from fhirsearchhelper.helpers.documenthelper import expand_single_document_refer
 from fhirsearchhelper.helpers.medicationhelper import expand_single_medication_reference
 from pydantic.error_wrappers import ValidationError
 
-from helpers import check_response, create_query_string, get_token_object
+from helpers import check_response, create_query_string, forward_raw_request, get_token_object, json_response_without_none, operation_outcome_response, parse_json_response, request_response
+from logging_config import logger
 from models import ConditionSearchParams, EpicTokenResponse, MedicationRequestSearchParams, ObservationSearchParams, PatientSearchParams
 from util import capability_statement_file, fhir_url
 
-logger: logging.Logger = logging.getLogger("main.resourceHandler")
-
-accept_header_value: typing.Literal["application/json"] = "application/json"
+accept_header_value: typing.Literal["application/fhir+json"] = "application/fhir+json"
 
 resource_router: APIRouter = APIRouter()
 
 cached_resources = {}
 
 
+def log_cache_clear_exception(exc: Exception) -> None:
+    logger.opt(exception=exc).error("Scheduled cache cleanup failed")
+
 @resource_router.on_event("startup")
-@repeat_every(seconds=60 * 5, logger=logger)
+@repeat_every(seconds=60 * 5, on_exception=log_cache_clear_exception)
 def clear_cached_resources():
     logger.info("Clearing cached resources array...")
     global cached_resources
@@ -39,226 +40,218 @@ def clear_cached_resources():
     logger.info("Finished clearing cached resources!")
 
 
-@resource_router.get("/{resource_type}/{id}", response_model=dict)
+@resource_router.api_route(
+    "/raw/{raw_path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+    response_model=None,
+)
+async def return_raw_request(raw_path: str, request: Request) -> Response:
+    return await forward_raw_request(request, raw_path)
+
+
+@resource_router.get("/{resource_type}/{id}", response_model_exclude_none=True, response_model=dict)
 def return_resource_by_id(resource_type: str, id: str) -> OperationOutcome | JSONResponse | dict:
     """Function for reading a resource given its id"""
 
-    if f"{resource_type}/{id}" in cached_resources:
-        return cached_resources[f"{resource_type}/{id}"]
+    cache_key = f"{resource_type}/{id}"
+    if cache_key in cached_resources:
+        return cached_resources[cache_key]
 
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
     if isinstance(token_object, OperationOutcome):
-        return token_object
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
 
     query_headers = {"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value}
-    resource_read: httpx.Response = httpx.get(fhir_url + f"{resource_type}/{id}", headers=query_headers)
+    resource_read = request_response(
+        url=fhir_url + cache_key,
+        method="GET",
+        resource_type=resource_type,
+        operation="reading resource",
+        headers=query_headers,
+    )
+    if resource_read is None:
+        return operation_outcome_response("Unable to reach the FHIR server while reading the resource.")
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=resource_read)
     if check_output:
-        return_output = JSONResponse(check_output.model_dump(exclude_none=True), status_code=resource_read.status_code, headers=resource_read.headers)
-        cached_resources[f"{resource_type}/{id}"] = return_output
-        return return_output
+        return JSONResponse(check_output.model_dump(exclude_none=True), status_code=resource_read.status_code)
 
-    resource_obj: dict = resource_read.json()
-
-    match resource_type:
-        case "DocumentReference":
-            doc_ref_output = expand_single_document_reference_content(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
-            logger.error("check for hitting resource")
-            return_resource_obj = doc_ref_output
-        case "MedicationRequest":
-            med_req_output = expand_single_medication_reference(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
-            if med_req_output:
-                return_resource_obj = med_req_output
-            else:
-                logger.warning("Unable to expand Medication reference")
-                return_resource_obj = resource_obj
-        case "Condition":
-            condition_output = expand_single_condition_onset(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
-            if condition_output:
-                return_resource_obj = condition_output
-            else:
-                logger.warning("Unable to add onsetDateTime to resource")
-                return_resource_obj = resource_obj
-        case _:
-            return_resource_obj = resource_obj
-
-    return_output = JSONResponse(return_resource_obj, status_code=resource_read.status_code)
-    cached_resources[f"{resource_type}/{id}"] = return_output
-
-    return return_output
-
-
-@resource_router.get("/{resource_type}", response_model_exclude_none=True)
-def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bundle | None:
-    search_params = req.query_params.multi_items()
-    query_string = resource_type + "?" + req.url.query
-
-    logger.info(f"Searching {resource_type} with Parameters: {search_params}")
-
-    token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
-    if isinstance(token_object, OperationOutcome):
-        return token_object
-
-    query_headers = {"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value}
+    resource_obj = parse_json_response(resource_read, resource_type=resource_type, operation="reading resource")
+    if resource_obj is None:
+        return operation_outcome_response("The FHIR server returned an invalid JSON resource.")
 
     try:
-        output_search: Bundle | OperationOutcome | None = run_fhir_query(query=fhir_url + query_string, query_headers=query_headers, capability_statement_file=capability_statement_file, debug=True)
-    except ValidationError as err:
-        logger.error(err)
-        return OperationOutcome(
-            resourceType="OperationOutcome",
-            issue=[{"severity": "error", "code": "processing", "diagnostics": "There was an issue during FHIR validation of the returning object, please see logs for more details"}],
+        match resource_type:
+            case "DocumentReference":
+                return_resource_obj = expand_single_document_reference_content(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+                if return_resource_obj is None:
+                    logger.warning("Unable to expand DocumentReference resource")
+                    return_resource_obj = resource_obj
+            case "MedicationRequest":
+                med_req_output = expand_single_medication_reference(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+                if med_req_output:
+                    return_resource_obj = med_req_output
+                else:
+                    logger.warning("Unable to expand Medication reference")
+                    return_resource_obj = resource_obj
+            case "Condition":
+                condition_output = expand_single_condition_onset(resource=resource_obj, base_url=fhir_url, query_headers=query_headers)
+                if condition_output:
+                    return_resource_obj = condition_output
+                else:
+                    logger.warning("Unable to add onsetDateTime to resource")
+                    return_resource_obj = resource_obj
+            case _:
+                return_resource_obj = resource_obj
+    except (AttributeError, IndexError, KeyError, TypeError, ValueError, httpx.HTTPError, ValidationError) as exc:
+        logger.bind(resource_type=resource_type, operation="normalizing resource").opt(exception=exc).error("Unable to normalize FHIR resource")
+        return operation_outcome_response("The FHIR server returned an invalid resource.")
+
+    return_output = json_response_without_none(return_resource_obj, status_code=resource_read.status_code)
+    cached_resources[cache_key] = return_output
+    return return_output
+
+@resource_router.get("/{resource_type}", response_model=None)
+def return_resource(resource_type: str, req: Request) -> OperationOutcome | Bundle | JSONResponse | None:
+    query_string = resource_type + "?" + req.url.query
+    logger.info("Searching {} resource", resource_type)
+
+    token_object: EpicTokenResponse | OperationOutcome = get_token_object()
+    if isinstance(token_object, OperationOutcome):
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
+
+    query_headers = {"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value}
+    try:
+        output_search: Bundle | OperationOutcome | None = run_fhir_query(
+            query=fhir_url + query_string,
+            query_headers=query_headers,
+            capability_statement_file=capability_statement_file,
+            debug=False,
         )
+    except ValidationError as exc:
+        logger.bind(resource_type=resource_type, operation="running FHIR query").opt(exception=exc).error("FHIR query returned invalid data")
+        return operation_outcome_response("The FHIR server returned invalid data.")
+    except (AttributeError, KeyError, TypeError, ValueError, httpx.HTTPError) as exc:
+        logger.bind(resource_type=resource_type, operation="running FHIR query").opt(exception=exc).error("FHIR query failed")
+        return operation_outcome_response("Unable to complete the FHIR query.")
 
-    return (
-        output_search
-        if output_search
-        else OperationOutcome(resourceType="OperationOutcome", issue=[{"severity": "error", "code": "processing", "diagnostics": "The query ran into an issue, please check the logs"}])
-    )
+    if output_search is None:
+        return operation_outcome_response("The FHIR query returned no usable response.")
+    return json_response_without_none(output_search)
 
-
-@resource_router.get("/Patient/{id}", response_model=dict)
-def return_patient(id: str) -> OperationOutcome | dict:
+@resource_router.get("/Patient/{id}", response_model_exclude_none=True, response_model=dict)
+def return_patient(id: str) -> OperationOutcome | JSONResponse | dict:
     """Function for reading a patient given an id"""
 
     resource_type: typing.Literal["Patient"] = "Patient"
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
     if isinstance(token_object, OperationOutcome):
-        return token_object
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
 
-    patient_read: httpx.Response = httpx.get(fhir_url + f"{resource_type}/{id}", headers={"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value})
+    patient_read = request_response(
+        url=fhir_url + f"{resource_type}/{id}",
+        method="GET",
+        resource_type=resource_type,
+        operation="reading patient",
+        headers={"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value},
+    )
+    if patient_read is None:
+        return operation_outcome_response("Unable to reach the FHIR server while reading the patient.")
 
     check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=patient_read)
     if check_output:
-        return check_output.model_dump(exclude_none=True)
+        return JSONResponse(check_output.model_dump(exclude_none=True), status_code=patient_read.status_code)
 
-    return Patient(**patient_read.json()).model_dump(exclude_none=True)
+    patient_data = parse_json_response(patient_read, resource_type=resource_type, operation="reading patient")
+    if patient_data is None:
+        return operation_outcome_response("The FHIR server returned an invalid patient response.")
+
+    try:
+        return Patient(**patient_data).model_dump(exclude_none=True)
+    except ValidationError as exc:
+        logger.bind(resource_type=resource_type, operation="validating patient").opt(exception=exc).error("FHIR patient response failed validation")
+        return operation_outcome_response("The FHIR server returned an invalid patient resource.")
 
 
-@resource_router.get("/Patient", response_model_exclude_none=True)
-def search_patient(search_params: PatientSearchParams = Depends(PatientSearchParams)) -> OperationOutcome | Bundle | None:
-    """
-    Function to search Patient resources
+def _search_resource(resource_type: str, query_string: str, token_object: EpicTokenResponse) -> dict | JSONResponse:
+    query_headers = {"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value}
+    response = request_response(
+        url=fhir_url + query_string,
+        method="GET",
+        resource_type=resource_type,
+        operation="searching resource",
+        headers=query_headers,
+    )
+    if response is None:
+        return operation_outcome_response("Unable to reach the FHIR server while searching.")
 
-    From Epic Documentation, you must have one of these sets of things for a search to return results:
+    check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=response)
+    if check_output:
+        return JSONResponse(check_output.model_dump(exclude_none=True), status_code=response.status_code)
 
-    * FHIR ID (_id)
-    * <ID Type>|<ID> (identifier = system|value)
-    * SSN Identifier (identifier = value where system = http://hl7.org/fhir/sid/us-ssn)
-    * Given name, family name, birthdate (given & family & birthdate)
-    * Given name, family name, legal sex, phone number/email (given & family & legal-sex [Epic extension] & birthdate)
+    response_data = parse_json_response(response, resource_type=resource_type, operation="searching resource")
+    if response_data is None:
+        return operation_outcome_response("The FHIR server returned an invalid search response.")
 
-    """
+    return json_response_without_none(response_data, status_code=response.status_code)
 
-    logger.info(f"Searching Patient with Parameters: {search_params}")
+@resource_router.get("/Patient", response_model=None)
+def search_patient(search_params: PatientSearchParams = Depends(PatientSearchParams)) -> OperationOutcome | Bundle | JSONResponse | None:
+    """Function to search Patient resources."""
+    logger.info("Searching Patient resource")
 
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
     if isinstance(token_object, OperationOutcome):
-        return token_object
-
-    query_headers = {"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value}
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
 
     query_string: str = create_query_string(resource_type="Patient", search_params=search_params)
+    query_headers = {"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value}
+    try:
+        patient_search: Bundle | OperationOutcome | None = run_fhir_query(
+            query=fhir_url + query_string,
+            query_headers=query_headers,
+            capability_statement_file=capability_statement_file,
+            debug=False,
+        )
+    except ValidationError as exc:
+        logger.bind(resource_type="Patient", operation="searching resource").opt(exception=exc).error("FHIR patient search returned invalid data")
+        return operation_outcome_response("The FHIR server returned invalid patient data.")
+    except (AttributeError, KeyError, TypeError, ValueError, httpx.HTTPError) as exc:
+        logger.bind(resource_type="Patient", operation="searching resource").opt(exception=exc).error("FHIR patient search failed")
+        return operation_outcome_response("Unable to complete the patient search.")
 
-    patient_search: Bundle | OperationOutcome | None = run_fhir_query(query=fhir_url + query_string, query_headers=query_headers, capability_statement_file=capability_statement_file, debug=True)
+    if patient_search is None:
+        return operation_outcome_response("The patient search returned no usable response.")
+    return json_response_without_none(patient_search)
 
-    # patient_search: httpx.Response = httpx.get(fhir_url+query_string, headers=query_headers)
-
-    # check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=patient_search)
-    # if check_output:
-    #     return check_output
-    return patient_search
-
-
-@resource_router.get("/Condition", response_model=dict)
-def search_condition(search_params: ConditionSearchParams = Depends(ConditionSearchParams)) -> OperationOutcome | Bundle:
-    """
-    Function to search Condition resources
-
-    From Epic documentation:
-
-    Starting August 2021, category is not required, it will search across all categories
-
-    Must include patient or subject
-    """
-
-    resource_type: typing.Literal["Condition"] = "Condition"
-    logger.info(f"Searching {resource_type} with Parameters: {search_params.not_null()}")
-
+@resource_router.get("/Condition", response_model_exclude_none=True, response_model=dict)
+def search_condition(search_params: ConditionSearchParams = Depends(ConditionSearchParams)) -> dict | JSONResponse:
+    logger.info("Searching Condition resource")
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
     if isinstance(token_object, OperationOutcome):
-        return token_object
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
 
-    query_string: str = create_query_string(resource_type=resource_type, search_params=search_params)
-
-    condition_search: httpx.Response = httpx.get(fhir_url + query_string, headers={"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value})
-
-    check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=condition_search)
-    if check_output:
-        return check_output
-
-    return condition_search.json()
+    query_string = create_query_string(resource_type="Condition", search_params=search_params)
+    return _search_resource("Condition", query_string, token_object)
 
 
-@resource_router.get("/Observation", response_model=dict)
-def search_observation(search_params: ObservationSearchParams = Depends(ObservationSearchParams)) -> OperationOutcome | Bundle:
-    """
-    Function to search Observation resources
-
-    From Epic documentation:
-
-    Must contain category or code, code would be a better option for specifics
-    """
-    resource_type: typing.Literal["Observation"] = "Observation"
-    logger.info(f"Searching {resource_type} with Parameters: {search_params.not_null()}")
-
+@resource_router.get("/Observation", response_model_exclude_none=True, response_model=dict)
+def search_observation(search_params: ObservationSearchParams = Depends(ObservationSearchParams)) -> dict | JSONResponse:
+    logger.info("Searching Observation resource")
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
     if isinstance(token_object, OperationOutcome):
-        return token_object
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
 
-    query_string: str = create_query_string(resource_type=resource_type, search_params=search_params)
-
-    observation_search: httpx.Response = httpx.get(fhir_url + query_string, headers={"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value})
-
-    check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=observation_search)
-    if check_output:
-        return check_output
-
-    return observation_search.json()
+    query_string = create_query_string(resource_type="Observation", search_params=search_params)
+    return _search_resource("Observation", query_string, token_object)
 
 
-@resource_router.get("/MedicationRequest", response_model=dict)
-def search_medication_request(search_params: MedicationRequestSearchParams = Depends(MedicationRequestSearchParams)) -> OperationOutcome | Bundle:
-    """
-    Function to search MedicationRequest resources
-
-    From Epic documentation:
-
-    The R4 version of this resource also returns patient-reported medications.
-    Previously, patient-reported medications were not returned by the STU3 version of MedicationRequest and needed to be queried using the STU3 MedicationStatement resource.
-    This is no longer the case. The R4 version of this resource returns patient-reported medications with the reportedBoolean element set to True.
-    """
-    resource_type: typing.Literal["MedicationRequest"] = "MedicationRequest"
-    logger.info(f"Searching {resource_type} with Parameters: {search_params.not_null()}")
-
+@resource_router.get("/MedicationRequest", response_model_exclude_none=True, response_model=dict)
+def search_medication_request(search_params: MedicationRequestSearchParams = Depends(MedicationRequestSearchParams)) -> dict | JSONResponse:
+    logger.info("Searching MedicationRequest resource")
     token_object: EpicTokenResponse | OperationOutcome = get_token_object()
-
     if isinstance(token_object, OperationOutcome):
-        return token_object
+        return operation_outcome_response("There was an issue getting a token for authorization.", status_code=401)
 
-    query_string: str = create_query_string(resource_type=resource_type, search_params=search_params)
-
-    mr_search: httpx.Response = httpx.get(fhir_url + query_string, headers={"Authorization": f"{token_object.token_type} {token_object.access_token}", "Accept": accept_header_value})
-
-    check_output: OperationOutcome | None = check_response(resource_type=resource_type, resp=mr_search)
-    if check_output:
-        return check_output
-
-    return mr_search.json()
+    query_string = create_query_string(resource_type="MedicationRequest", search_params=search_params)
+    return _search_resource("MedicationRequest", query_string, token_object)
