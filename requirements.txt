@@ -13,7 +13,7 @@ fastapi-utils==0.8.0
 fhir-core==1.1.12
 fhir-resources==8.3.0
 fhirpathpy==2.2.4
-fhirsearchhelper==0.7.0
+fhirsearchhelper==0.7.2
 h11==0.16.0
 h2==4.4.1
 hpack==4.2.0

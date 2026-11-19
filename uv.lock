@@ -7,7 +7,7 @@ exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for 
 exclude-newer-span = "P7D"
 
 [options.exclude-newer-package]
-fhirsearchhelper = "2026-11-19T14:31:33Z"
+fhirsearchhelper = "2026-11-19T16:12:18Z"
 
 [[package]]
 name = "annotated-doc"
@@ -266,7 +266,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.162.4,<1" },
     { name = "fastapi-utils", extras = ["all"], specifier = ">=0.8.0,<1" },
-    { name = "fhirsearchhelper", specifier = ">=0.7.0" },
+    { name = "fhirsearchhelper", specifier = ">=0.7.2" },
     { name = "httpx", specifier = ">=0.28.1,<1" },
     { name = "hypercorn", specifier = ">=0.18.0,<1" },
     { name = "loguru", specifier = ">=0.7.3,<1" },
@@ -282,7 +282,7 @@ dev = [
 
 [[package]]
 name = "fhirsearchhelper"
-version = "0.7.0"
+version = "0.7.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fhir-resources" },
@@ -290,9 +290,9 @@ dependencies = [
     { name = "html2text" },
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/e6/a287a7df7af5c73554ab3246f4c3abb1b0cd6176b6d77e2b09d62167294f/fhirsearchhelper-0.7.0.tar.gz", hash = "sha256:875199000735b2f36b68227a7cbaf5a5d7e641872f9eddd0c1653eb2e7df2f4a", size = 55594, upload-time = "2026-11-19T14:31:32.133Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/09/094f4940d78abc9ea915ddd26c65d5773c7c816e9038a182d800d4a5d0fe/fhirsearchhelper-0.7.2.tar.gz", hash = "sha256:153166efbb07a23e57a95d0f7cda45359b1d993bc579587c7be1d96577d2abe7", size = 57686, upload-time = "2026-11-19T16:12:17.556Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b2/bd/b1f083fa4cd4584ed4b34998a8abdbee5f24182f9aa373fa907f776ee9e4/fhirsearchhelper-0.7.0-py3-none-any.whl", hash = "sha256:dfb3b4e611612cba95fabb9d849b41cad7db625d3af3408856dc789c0067745a", size = 59027, upload-time = "2026-11-19T14:31:30.824Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/f3/eab79387bc06c832cb21f5537b1b1102e0969b58ff577481065064385b6c/fhirsearchhelper-0.7.2-py3-none-any.whl", hash = "sha256:a772922b08025a40b48480c8050ecfb8d099d03e8b02ac2baec3a1076884872e", size = 60144, upload-time = "2026-11-19T16:12:16.225Z" },
 ]
 
 [[package]]
